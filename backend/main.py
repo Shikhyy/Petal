@@ -53,3 +53,8 @@ app.include_router(agents.router, prefix="/api/v1")
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "petal-api", "version": "2.0.0"}
+
+
+@app.get("/api/v1/health")
+async def api_health():
+    return {"status": "ok", "service": "petal-api", "version": "2.0.0"}

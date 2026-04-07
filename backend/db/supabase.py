@@ -1,6 +1,10 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy import Column, String, DateTime, Boolean, Text, ARRAY, JSON
 from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.pool import NullPool
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     from pgvector.sqlalchemy import Vector
@@ -12,18 +16,31 @@ import uuid
 
 from ..config import settings
 
-connect_args = {}
-if "supabase" in settings.DATABASE_URL:
-    # For Supabase, use sslmode query param in URL, not connect_args
-    if "?" not in settings.DATABASE_URL:
-        settings.DATABASE_URL += "?sslmode=require"
-    elif "sslmode" not in settings.DATABASE_URL:
-        settings.DATABASE_URL += "&sslmode=require"
+def create_engine_with_ssl(url: str):
+    """Create async engine with SSL support for Supabase."""
+    if "postgresql+asyncpg" in url:
+        url = url.replace("postgresql+asyncpg", "postgresql")
+    
+    if "?" in url:
+        url += "&sslmode=require"
+    else:
+        url += "?sslmode=require"
+    
+    logger.info(f"Connecting to database with SSL: {url[:60]}...")
+    
+    return create_async_engine(
+        url,
+        echo=False,
+        poolclass=NullPool,
+    )
 
-engine = create_async_engine(
-    settings.DATABASE_URL, echo=False, connect_args=connect_args
-)
+engine = create_engine_with_ssl(settings.DATABASE_URL)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+logger.info("Database session factory created")
+except Exception as e:
+    logger.error(f"Failed to create database engine: {e}")
+    engine = None
+    async_session = None
 
 
 class Base(DeclarativeBase):
