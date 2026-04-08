@@ -3,45 +3,64 @@
 </p>
 
 <p align="center">
-  <strong>PETAL</strong> is a multi-agent AI workspace for tasks, calendar, notes, and chat.
-  <br>
+  <strong>PETAL</strong> is a multi-agent AI workspace for tasks, calendar, notes, and chat.<br>
   Built with FastAPI, React, Vite, Supabase, and Gemini.
 </p>
 
 <p align="center">
-  <a href="https://petal-frontend-ycmhorzhoa-uc.a.run.app">Live app</a> ·
-  <a href="https://petal-api-ycmhorzhoa-uc.a.run.app/health">API health</a> ·
-  <a href="#local-setup">Local setup</a> ·
-  <a href="#deployment">Deployment</a>
+  <a href="https://petal-frontend-ycmhorzhoa-uc.a.run.app"><img src="https://img.shields.io/badge/Live_App-Open_APP-blue?style=for-the-badge"></a>
+  <a href="https://petal-api-ycmhorzhoa-uc.a.run.app/health"><img src="https://img.shields.io/badge/API-Health-green?style=for-the-badge"></a>
+  <a href="#local-setup"><img src="https://img.shields.io/badge/Setup-Local-purple?style=for-the-badge"></a>
+  <a href="#deployment"><img src="https://img.shields.io/badge/Deploy-Cloud_Run-orange?style=for-the-badge"></a>
 </p>
+
+---
+
+## Screenshots
 
 <p align="center">
   <img src="assets/showcase/screenshot-1.png" alt="Tasks" width="32%">
   <img src="assets/showcase/screenshot-2.png" alt="Calendar" width="32%">
   <img src="assets/showcase/screenshot-3.png" alt="Chat" width="32%">
+</p>
+<p align="center">
   <img src="assets/showcase/screenshot-4.png" alt="Notes" width="32%">
   <img src="assets/showcase/screenshot-5.png" alt="Info Agent" width="32%">
   <img src="assets/showcase/screenshot-6.png" alt="Mobile" width="32%">
 </p>
 
+---
+
+## Tech Stack
+
+| Layer | Technology | Badge |
+|-------|-----------|-------|
+| **Frontend** | React 18 | <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=white"> |
+| | Vite | <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white"> |
+| | TypeScript | <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white"> |
+| **Backend** | FastAPI | <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white"> |
+| | Python | <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white"> |
+| | SQLAlchemy | <img src="https://img.shields.io/badge/SQLAlchemy-D71F00?style=for-the-badge"> |
+| **Database** | PostgreSQL | <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white"> |
+| | Supabase | <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white"> |
+| **AI** | Gemini 2.0 Flash | <img src="https://img.shields.io/badge/Gemini-8E44AD?style=for-the-badge"> |
+| **Cloud** | Docker | <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white"> |
+| | Google Cloud Run | <img src="https://img.shields.io/badge/Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white"> |
+
+---
+
 ## What PETAL Does
 
 PETAL routes natural language requests through a small team of specialized agents:
 
-- Orchestrator for routing and context management
-- Task Agent for todo workflows
-- Calendar Agent for event scheduling
-- Info Agent for notes and knowledge capture
+- **Orchestrator** — routes requests and manages context
+- **Task Agent** — manages todo workflows
+- **Calendar Agent** — handles event scheduling
+- **Info Agent** — stores notes and knowledge
 
 The frontend is a brutalist, high-contrast interface designed to feel like one coherent workspace instead of separate apps.
 
-## Stack
-
-- Backend: FastAPI, SQLAlchemy, asyncpg, JWT auth
-- Frontend: React 18, Vite, TypeScript
-- Data: Supabase PostgreSQL
-- AI: Gemini 2.0 Flash
-- Runtime: Docker, Cloud Run, Cloud Build
+---
 
 ## Architecture
 
@@ -99,6 +118,8 @@ flowchart TB
     PG --> AuthSupabase
 ```
 
+---
+
 ## App Flow
 
 ```mermaid
@@ -143,9 +164,7 @@ sequenceDiagram
     UI-->>User: Render updated UI
 ```
 
-## Screens
-
-Screenshots above show the full brutalist interface across all views.
+---
 
 ## Local Setup
 
@@ -155,19 +174,21 @@ pip install -r requirements.txt
 cd frontend && npm install
 ```
 
-Backend:
+**Backend:**
 
 ```bash
 cd backend
 python -m uvicorn main:app --reload --port 8080
 ```
 
-Frontend:
+**Frontend:**
 
 ```bash
 cd frontend
 npm run dev
 ```
+
+---
 
 ## Environment
 
@@ -188,6 +209,8 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 ```
 
+---
+
 ## Deployment
 
 Backend deployment on Cloud Run:
@@ -202,10 +225,12 @@ Frontend build and deploy:
 ./scripts/deploy-frontend.sh
 ```
 
-Production URLs currently used by the project:
+Production URLs:
 
 - Frontend: https://petal-frontend-ycmhorzhoa-uc.a.run.app
 - Backend: https://petal-api-ycmhorzhoa-uc.a.run.app
+
+---
 
 ## Security
 
@@ -220,15 +245,19 @@ Ignored by default:
 - Terraform state files
 - Common private key formats
 
+---
+
 ## Repository Layout
 
-```text
+```
 backend/              FastAPI app, agents, routes, database
 frontend/             React app, components, pages, styles
-docs/                 Architecture and product documentation
+assets/               Logo and showcase images
 infrastructure/       Terraform and migrations
 scripts/              Deployment helpers
 ```
+
+---
 
 ## Notes
 
