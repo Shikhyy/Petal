@@ -82,7 +82,7 @@ const SignUpPage = () => {
                   
                   <div style={{ textAlign: 'center', marginTop: 24, fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--c5)' }}>
                     Already have an account? 
-                    <a href="#" style={{ color: 'var(--c3)', fontWeight: 700 }}> Sign In</a>
+                    <Link to="/login" style={{ color: 'var(--c3)', fontWeight: 700 }}> Sign In</Link>
                   </div>
                 </div>
               </div>

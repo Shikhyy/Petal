@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+  <title id="title">Petal Logo</title>
+  <desc id="desc">Brutalist Petal wordmark with orbit mark</desc>
+  <rect width="1200" height="320" fill="#fff8f5"/>
+  <g transform="translate(56 48)">
+    <rect x="0" y="0" width="176" height="176" fill="#ffcdb2" stroke="#1a0a0d" stroke-width="8"/>
+    <circle cx="88" cy="88" r="54" fill="none" stroke="#1a0a0d" stroke-width="8"/>
+    <rect x="70" y="44" width="60" height="88" fill="#6d6875" stroke="#1a0a0d" stroke-width="8" transform="rotate(12 100 88)"/>
+    <circle cx="56" cy="112" r="22" fill="#e5989b" stroke="#1a0a0d" stroke-width="6"/>
+    <rect x="98" y="108" width="52" height="52" fill="#b5838d" stroke="#1a0a0d" stroke-width="6"/>
+  </g>
+  <g transform="translate(270 88)">
+    <text x="0" y="68" font-family="Bebas Neue, Impact, sans-serif" font-size="92" fill="#1a0a0d" letter-spacing="5">PETAL</text>
+    <text x="2" y="116" font-family="Space Mono, monospace" font-size="18" fill="#6d6875" letter-spacing="6">PERSONALIZED EXECUTION & TASK AGENT LAYER</text>
+  </g>
+</svg>

@@ -83,11 +83,15 @@ gcloud auth application-default set-quota-project $PROJECT_ID
 
 ```bash
 # Create secrets in Secret Manager
-echo -n "your-secret-key-here" | gcloud secrets create petal-secret-key --data-file=-
+echo -n "your-jwt-secret-here" | gcloud secrets create petal-jwt-secret --data-file=-
+echo -n "your-gemini-api-key-here" | gcloud secrets create petal-gemini-api-key --data-file=-
 echo -n "your-firebase-service-account-json" | gcloud secrets create firebase-admin-key --data-file=-
 
 # Grant Cloud Run service account access
-gcloud secrets add-iam-policy-binding petal-secret-key \
+gcloud secrets add-iam-policy-binding petal-jwt-secret \
+  --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+gcloud secrets add-iam-policy-binding petal-gemini-api-key \
   --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 ```
@@ -150,8 +154,8 @@ gcloud run deploy petal-api \
   --min-instances 1 \
   --max-instances 10 \
   --port 8080 \
-  --set-env-vars "GCP_PROJECT=$PROJECT_ID,GCP_REGION=$REGION,GEMINI_MODEL=gemini-2.0-flash" \
-  --set-secrets "SECRET_KEY=petal-secret-key:latest"
+  --set-env-vars "GCP_PROJECT=$PROJECT_ID,GCP_REGION=$REGION,GEMINI_MODEL=gemini-2.0-flash,ALLOWED_ORIGINS=*" \
+  --set-secrets "JWT_SECRET=petal-jwt-secret:latest,GEMINI_API_KEY=petal-gemini-api-key:latest"
 
 # Get service URL
 gcloud run services describe petal-api --region $REGION --format 'value(status.url)'
@@ -159,16 +163,13 @@ gcloud run services describe petal-api --region $REGION --format 'value(status.u
 
 ---
 
-## 7. Frontend Deployment (Firebase Hosting)
+## 7. Frontend Deployment (Cloud Run)
 
 ```bash
-cd frontend
-
-# Update VITE_API_URL to your Cloud Run URL
-echo "VITE_API_URL=https://petal-api-xxxx-uc.a.run.app/api/v1" > .env.production
-
-npm run build
-firebase deploy --only hosting
+gcloud builds submit \
+  --config cloudbuild-frontend.yaml \
+  --substitutions=_API_URL=https://petal-api-xxxx-uc.a.run.app/api/v1,_WS_URL=wss://petal-api-xxxx-uc.a.run.app/api/v1 \
+  .
 ```
 
 ---

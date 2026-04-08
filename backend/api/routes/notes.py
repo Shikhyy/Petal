@@ -7,6 +7,7 @@ from slowapi.util import get_remote_address
 
 from google import genai
 
+from ...config import settings
 from ...db.supabase import get_db
 from ...api.middleware import get_user_or_dev
 from ...db.models import NoteCreate, NoteUpdate, Note
@@ -22,7 +23,11 @@ def get_genai_client():
     """Get cached GenAI client for embeddings."""
     global _genai_client
     if _genai_client is None:
-        _genai_client = genai.Client()
+        api_key = settings.GEMINI_API_KEY
+        if api_key:
+            _genai_client = genai.Client(api_key=api_key)
+        else:
+            _genai_client = genai.Client()
     return _genai_client
 
 
@@ -118,6 +123,8 @@ async def update_note(
         if not updated:
             raise HTTPException(status_code=404, detail="Note not found")
         return updated
+    except HTTPException:
+        raise
     except Exception as e:
         logger.warning(f"DB unavailable for update_note: {e}")
         raise HTTPException(status_code=503, detail="Database unavailable")
@@ -135,6 +142,8 @@ async def delete_note(
         deleted = await notes_tools.delete_note(db, user["user_id"], note_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="Note not found")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.warning(f"DB unavailable for delete_note: {e}")
         raise HTTPException(status_code=503, detail="Database unavailable")

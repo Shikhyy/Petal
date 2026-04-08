@@ -78,6 +78,8 @@ async def update_task(
         if result is None:
             raise HTTPException(status_code=404, detail="Task not found")
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.warning(f"DB unavailable for update_task: {e}")
         raise HTTPException(status_code=503, detail="Database unavailable")
@@ -97,6 +99,8 @@ async def delete_task(
         deleted = await task_tools.delete_task(db, user["user_id"], task_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="Task not found")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.warning(f"DB unavailable for delete_task: {e}")
         raise HTTPException(status_code=503, detail="Database unavailable")

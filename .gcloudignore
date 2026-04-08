@@ -1,0 +1,26 @@
+# Ignore patterns
+.git/
+.gitignore
+node_modules/
+__pycache__/
+.venv/
+*.md
+config/keys/
+.env
+.env.local
+.env.production
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+infrastructure/terraform/*.tfvars
+*.tfstate
+*.tfstate.*
+*.pem
+*.key
+*.p12
+*.crt
+*.cer
+*.der
+
+# Do NOT ignore these
+!frontend/dist/

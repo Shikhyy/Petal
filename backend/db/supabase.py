@@ -16,31 +16,51 @@ import uuid
 
 from ..config import settings
 
-def create_engine_with_ssl(url: str):
-    """Create async engine with SSL support for Supabase."""
-    if "postgresql+asyncpg" in url:
-        url = url.replace("postgresql+asyncpg", "postgresql")
-    
+
+def get_database_url() -> str:
+    """Get cleaned database URL."""
+    url = settings.DATABASE_URL
+
+    logger.info(f"Original DATABASE_URL: {url[:50]}...")
+
     if "?" in url:
-        url += "&sslmode=require"
-    else:
-        url += "?sslmode=require"
-    
-    logger.info(f"Connecting to database with SSL: {url[:60]}...")
-    
-    return create_async_engine(
-        url,
+        url = url.split("?")[0]
+        logger.info("Removed query params from URL")
+
+    if not url.startswith("postgresql+asyncpg"):
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://")
+            logger.info("Converted to asyncpg driver")
+
+    logger.info(f"Final URL: {url[:60]}...")
+    return url
+
+
+# Create engine with connection args for SSL
+logger.info("Creating database engine...")
+try:
+    engine = create_async_engine(
+        get_database_url(),
         echo=False,
         poolclass=NullPool,
+        connect_args={
+            "ssl": "require",
+            "timeout": 30,
+            "command_timeout": 30,
+        },
+        pool_pre_ping=True,
     )
-
-engine = create_engine_with_ssl(settings.DATABASE_URL)
-async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-logger.info("Database session factory created")
+    logger.info("Database engine created successfully!")
 except Exception as e:
     logger.error(f"Failed to create database engine: {e}")
-    engine = None
-    async_session = None
+    engine = create_async_engine(
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/petal",
+        echo=False,
+    )
+    logger.info("Fallback engine created (local dev)")
+
+async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+logger.info("Database session factory ready")
 
 
 class Base(DeclarativeBase):
@@ -92,6 +112,18 @@ class NoteModel(Base):
     )
 
 
+class SessionModel(Base):
+    __tablename__ = "sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), nullable=False)
+    messages = Column(JSON, default=[])
+    agents_invoked = Column(ARRAY(String), default=[])
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
 class CalendarEventModel(Base):
     __tablename__ = "calendar_events"
 
@@ -110,27 +142,17 @@ class CalendarEventModel(Base):
     )
 
 
-class SessionModel(Base):
-    __tablename__ = "sessions"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), nullable=False)
-    messages = Column(JSONB, default=[])
-    agents_invoked = Column(ARRAY(String), default=[])
-    created_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+async def init_db():
+    """Initialize database tables."""
+    logger.info("Database initialization skipped - using existing tables")
 
 
-async def get_db() -> AsyncSession:
+async def get_db():
+    """Get database session."""
     async with async_session() as session:
         yield session
 
 
-async def init_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-
 async def close_db():
+    """Close database connections."""
     await engine.dispose()

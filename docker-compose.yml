@@ -1,0 +1,41 @@
+# PETAL Production Docker Compose
+# Usage: docker-compose up --build
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      GEMINI_MODEL: gemini-2.0-flash
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-petal-492415}
+      GMAIL_MCP_URL: ${GMAIL_MCP_URL}
+      GCAL_MCP_URL: ${GCAL_MCP_URL}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
+      JWT_SECRET: ${JWT_SECRET}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+    volumes:
+      - ./config/keys:/app/config/keys:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://backend:8080/api/v1
+        VITE_WS_URL: ws://backend:8080/api/v1
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend

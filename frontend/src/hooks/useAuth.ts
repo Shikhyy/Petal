@@ -1,13 +1,23 @@
 import { useState, useEffect } from 'react';
 import { supabase, onAuthStateChange, clearAuthToken, devLogin as supabaseDevLogin } from '../utils/supabase';
 
-const supabaseConfigured = import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 export function useAuth() {
   const [authenticated, setAuthenticated] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const syncSession = (session: { access_token: string; user: any } | null) => {
+    if (!session) {
+      return;
+    }
+
+    setToken(session.access_token);
+    setAuthenticated(true);
+    setUser(session.user);
+  };
 
   useEffect(() => {
     // Check for existing dev token first
@@ -55,6 +65,7 @@ export function useAuth() {
     const { signIn } = await import('../utils/supabase');
     const { data, error } = await signIn(email, password);
     if (error) throw error;
+    syncSession(data.session ?? null);
     return data;
   };
 
@@ -63,6 +74,7 @@ export function useAuth() {
     const { signUp } = await import('../utils/supabase');
     const { data, error } = await signUp(email, password);
     if (error) throw error;
+    syncSession(data.session ?? null);
     return data;
   };
 

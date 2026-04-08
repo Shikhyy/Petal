@@ -1,13 +1,15 @@
-from fastapi import FastAPI
-from contextlib import asynccontextmanager
+import os
 import logging
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 
 from .api.middleware import setup_cors
 from .api.rate_limit import limiter, rate_limit_exceeded_handler
 from .api.monitoring import LoggingMiddleware
 from .api.websocket import router as ws_router
 from .api.routes import chat, tasks, calendar, notes, agents
-from .db.supabase import init_db, close_db
+
+logger = logging.getLogger(__name__)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,10 +19,8 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Skip DB init for now - tables exist in Supabase
-    # await init_db()
+    logger.info("PETAL API starting...")
     yield
-    await close_db()
 
 
 app = FastAPI(
@@ -42,7 +42,6 @@ app.add_middleware(LoggingMiddleware)
 setup_cors(app)
 
 app.include_router(ws_router, prefix="/api/v1")
-
 app.include_router(chat.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
 app.include_router(calendar.router, prefix="/api/v1")

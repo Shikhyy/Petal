@@ -1,161 +1,135 @@
-```
-╔═══════════════════════════════════════════════════╗
-║   ██████╗  ██████╗  ██████╗ ████████╗████████╗   ║
-║   ██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝╚══██╔══╝   ║
-║   ██████╔╝██║   ██║██████╔╝   ██║      ██║      ║
-║   ██╔══██╗██║   ██║██╔══██╗   ██║      ██║      ║
-║   ██████╔╝╚██████╔╝██║  ██║   ██║      ██║      ║
-║   ╚═════╝  ╚═════╝ ╚═╝  ╚═╝   ╚═╝      ╚═╝      ║
-╚═══════════════════════════════════════════════════╝
-```
+<p align="center">
+  <img src="docs/assets/petal-logo.svg" alt="PETAL logo" width="100%">
+</p>
 
-**PETAL** — Personalized Execution & Task Agent Layer
+<p align="center">
+  <strong>PETAL</strong> is a multi-agent AI workspace for tasks, calendar, notes, and chat.
+  <br>
+  Built with FastAPI, React, Vite, Supabase, and Gemini.
+</p>
 
-_Multi-agent AI workspace powered by Gemini 2.0 Flash & Supabase_
+<p align="center">
+  <a href="https://petal-frontend-ycmhorzhoa-uc.a.run.app">Live app</a> ·
+  <a href="https://petal-api-ycmhorzhoa-uc.a.run.app/health">API health</a> ·
+  <a href="#local-setup">Local setup</a> ·
+  <a href="#deployment">Deployment</a>
+</p>
 
-[![Python](https://img.shields.io/badge/Python-3.12+-blue?logo=python)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-cyan?logo=fastapi)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18-cyan?logo=react)](https://react.dev)
-[![Supabase](https://img.shields.io/badge/Supabase-2-green?logo=supabase)](https://supabase.com)
+<p align="center">
+  <img src="docs/assets/petal-showcase.svg" alt="PETAL product showcase" width="100%">
+</p>
 
----
+## What PETAL Does
 
-## What is PETAL?
+PETAL routes natural language requests through a small team of specialized agents:
 
-PETAL is a production-grade multi-agent AI system that manages your tasks, calendar, and knowledge base through a coordinated team of specialized AI agents. Each agent handles a specific domain — tasks, calendar, or notes — while an orchestrator routes requests intelligently.
+- Orchestrator for routing and context management
+- Task Agent for todo workflows
+- Calendar Agent for event scheduling
+- Info Agent for notes and knowledge capture
 
-```
-     ┌──────┐
-     │ USER │
-     └──┬───┘
-        │
-        ▼
-  ┌────────────┐
-  │ ORCHESTRATOR│───────┐
-  └─────┬──────┘       │
-        │              │
-   ┌────▼────┐   ┌────▼────┐
-   │  TASK   │   │  CAL    │
-   │  AGENT │   │  AGENT  │
-   └────┬────┘   └────┬────┘
-        │              │
-        ▼              ▼
-   ┌─────────┐   ┌─────────┐
-   │ TASKS   │   │CALENDAR │
-   │    ↕   │   │   ↕    │
-   └─────────┘   └─────────┘
-        │              │
-        └──────┬──────┘
-               │
-               ▼
-        ┌──────────────────┐
-        │     SUPABASE       │
-        │  (PostgreSQL DB)  │
-        └──────────────────┘
-```
-
----
-
-## Features
-
-- **Multi-agent orchestration** — Intelligent request routing to specialized agents
-- **Gemini 2.0 Flash** — Fast, capable LLM backbone
-- **Task management** — Kanban board, priorities, due dates
-- **Calendar management** — Event scheduling via CalAgent
-- **Knowledge base** — Semantic search via Gemini embeddings
-- **Chat interface** — Conversation history with agent visualization
-- **Brutalist UI** — Animated ticker, agent status indicators
-- **REST API** — Full CRUD for tasks, notes, calendar
-- **WebSocket** — Real-time updates
-- **JWT Auth** — Secure authentication
-
----
-
-## Quick Start
-
-```bash
-# Clone & enter
-git clone https://github.com/Shikhyy/Petal.git
-cd Petal
-
-# Backend
-cp .env.example .env  # Configure your keys
-pip install -r requirements.txt
-cd backend && python -m uvicorn main:app --reload --port 8080
-
-# Frontend (new terminal)
-cd frontend && npm install && npm run dev
-
-# Open http://localhost:5173
-```
-
-### Or with Docker
-
-```bash
-docker-compose up --build
-```
-
----
-
-## Environment
-
-```env
-# Supabase
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-
-# Gemini
-GEMINI_API_KEY=your-gemini-api-key
-
-# Security
-JWT_SECRET=your-jwt-secret
-ALLOWED_ORIGINS=http://localhost:5173
-```
-
----
+The frontend is a brutalist, high-contrast interface designed to feel like one coherent workspace instead of separate apps.
 
 ## Stack
 
-| Layer | Technology |
-|-------|------------|
-| LLM | Gemini 2.0 Flash |
-| Backend | Python 3.12 + FastAPI |
-| Frontend | React 18 + Vite + Zustand |
-| Database | PostgreSQL + Supabase |
-| Auth | JWT |
+- Backend: FastAPI, SQLAlchemy, asyncpg, JWT auth
+- Frontend: React 18, Vite, TypeScript
+- Data: Supabase PostgreSQL
+- AI: Gemini 2.0 Flash
+- Runtime: Docker, Cloud Run, Cloud Build
 
----
+## Screens
 
-## API
+The design system and product flow are documented visually in the assets below.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/chat` | Chat with agents |
-| GET/POST | `/api/v1/tasks` | List/create tasks |
-| GET/POST | `/api/v1/notes` | List/create notes |
-| GET/POST | `/api/v1/calendar/events` | List/create events |
-| GET | `/api/v1/agents/status` | Agent status |
+- [Logo](docs/assets/petal-logo.svg)
+- [Product showcase](docs/assets/petal-showcase.svg)
 
----
+## Local Setup
 
-## Structure
-
-```
-petal/
-├── backend/           # FastAPI + agents
-│   ├── agents/      # Orchestrator, TaskAgent, CalAgent, InfoAgent
-│   ├── api/         # Routes, middleware
-│   ├── db/          # Models, Supabase client
-│   └── tools/       # Tool functions
-├── frontend/         # React + Vite
-│   ├── src/
-│   │   ├── pages/   # Dashboard, Tasks, Calendar, etc.
-│   │   ├── hooks/   # useTasks, useNotes, useAgents
-│   │   └── store/   # Zustand state
-├── infrastructure/  # Terraform, migrations
-└── docs/            # Specification documents
+```bash
+cp .env.example .env
+pip install -r requirements.txt
+cd frontend && npm install
 ```
 
----
+Backend:
 
-MIT © 2026 PETAL Project
+```bash
+cd backend
+python -m uvicorn main:app --reload --port 8080
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm run dev
+```
+
+## Environment
+
+Use `.env.example` as the source of truth. Do not commit real keys or secrets.
+
+Required variables:
+
+```env
+DATABASE_URL=
+SUPABASE_URL=
+SUPABASE_JWT_SECRET=
+SUPABASE_ANON_KEY=
+GEMINI_API_KEY=
+JWT_SECRET=
+ALLOWED_ORIGINS=
+VITE_API_URL=
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+```
+
+## Deployment
+
+Backend deployment on Cloud Run:
+
+```bash
+./scripts/deploy-cloud-run.sh
+```
+
+Frontend build and deploy:
+
+```bash
+./scripts/deploy-frontend.sh
+```
+
+Production URLs currently used by the project:
+
+- Frontend: https://petal-frontend-ycmhorzhoa-uc.a.run.app
+- Backend: https://petal-api-ycmhorzhoa-uc.a.run.app
+
+## Security
+
+Secrets are intentionally excluded from source control.
+
+Ignored by default:
+
+- `.env`, `.env.local`, `.env.production`
+- `frontend/.env`, `frontend/.env.local`, `frontend/.env.production`
+- `config/keys/*.json`
+- `infrastructure/terraform/*.tfvars`
+- Terraform state files
+- Common private key formats
+
+## Repository Layout
+
+```text
+backend/              FastAPI app, agents, routes, database
+frontend/             React app, components, pages, styles
+docs/                 Architecture and product documentation
+infrastructure/       Terraform and migrations
+scripts/              Deployment helpers
+```
+
+## Notes
+
+- The app is designed to run with bearer-token auth and Cloud Run-friendly CORS.
+- Build-time frontend env vars are required for the deployed Supabase client.
+- If you change deployment URLs, update the frontend build args and the backend CORS origin list together.

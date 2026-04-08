@@ -1,0 +1,10 @@
+# Exclude other Dockerfiles
+Dockerfile.*
+*.md
+.git/
+.gitignore
+node_modules/
+__pycache__/
+.venv/
+config/keys/
+*.json
