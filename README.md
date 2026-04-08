@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/showcase/Screenshot 2026-04-08 at 11.37.30 PM.png" alt="PETAL logo" width="40%">
+  <img src="assets/showcase/logo.png" alt="PETAL logo" width="40%">
 </p>
 
 <p align="center">
