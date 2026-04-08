@@ -61,5 +61,6 @@ build/
 *.db
 *.sqlite3
 
-# Superpowers (local-only, not for commit)
+# Superpowers and docs (local-only, not for commit)
 .superpower/
+docs/
