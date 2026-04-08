@@ -63,4 +63,5 @@ build/
 
 # Superpowers and docs (local-only, not for commit)
 .superpower/
+.superpowers/
 docs/
