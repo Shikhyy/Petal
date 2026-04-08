@@ -16,12 +16,12 @@
 </p>
 
 <p align="center">
-  <img src="assets/showcase/Screenshot 2026-04-08 at 10.42.16 PM.png" alt="Tasks" width="32%">
-  <img src="assets/showcase/Screenshot 2026-04-08 at 10.42.23 PM.png" alt="Calendar" width="32%">
-  <img src="assets/showcase/Screenshot 2026-04-08 at 10.42.33 PM.png" alt="Chat" width="32%">
-  <img src="assets/showcase/Screenshot 2026-04-08 at 11.02.12 PM.png" alt="Notes" width="32%">
-  <img src="assets/showcase/Screenshot 2026-04-08 at 11.03.16 PM.png" alt="Info Agent" width="32%">
-  <img src="assets/showcase/Screenshot 2026-04-08 at 11.10.13 PM.png" alt="Mobile" width="32%">
+  <img src="assets/showcase/Screenshot-2026-04-08-at-10.42.16-PM.png" alt="Tasks" width="32%">
+  <img src="assets/showcase/Screenshot-2026-04-08-at-10.42.23-PM.png" alt="Calendar" width="32%">
+  <img src="assets/showcase/Screenshot-2026-04-08-at-10.42.33-PM.png" alt="Chat" width="32%">
+  <img src="assets/showcase/Screenshot-2026-04-08-at-11.02.12-PM.png" alt="Notes" width="32%">
+  <img src="assets/showcase/Screenshot-2026-04-08-at-11.03.16-PM.png" alt="Info Agent" width="32%">
+  <img src="assets/showcase/Screenshot-2026-04-08-at-11.10.13-PM.png" alt="Mobile" width="32%">
 </p>
 
 ## What PETAL Does
