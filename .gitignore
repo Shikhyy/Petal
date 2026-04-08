@@ -60,3 +60,6 @@ build/
 # Database
 *.db
 *.sqlite3
+
+# Superpowers (local-only, not for commit)
+.superpower/

@@ -16,7 +16,12 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/petal-showcase.svg" alt="PETAL product showcase" width="100%">
+  <img src="docs/assets/showcase/Screenshot 2026-04-08 at 10.42.16 PM.png" alt="Tasks" width="32%">
+  <img src="docs/assets/showcase/Screenshot 2026-04-08 at 10.42.23 PM.png" alt="Calendar" width="32%">
+  <img src="docs/assets/showcase/Screenshot 2026-04-08 at 10.42.33 PM.png" alt="Chat" width="32%">
+  <img src="docs/assets/showcase/Screenshot 2026-04-08 at 11.02.12 PM.png" alt="Notes" width="32%">
+  <img src="docs/assets/showcase/Screenshot 2026-04-08 at 11.03.16 PM.png" alt="Info Agent" width="32%">
+  <img src="docs/assets/showcase/Screenshot 2026-04-08 at 11.10.13 PM.png" alt="Mobile" width="32%">
 </p>
 
 ## What PETAL Does
@@ -38,12 +43,109 @@ The frontend is a brutalist, high-contrast interface designed to feel like one c
 - AI: Gemini 2.0 Flash
 - Runtime: Docker, Cloud Run, Cloud Build
 
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Client["Frontend (React + Vite)"]
+        UI["Brutalist UI"]
+        SC["Supabase Client"]
+        API["API Client"]
+    end
+
+    subgraph CloudRun["Cloud Run"]
+        subgraph Backend["FastAPI Backend"]
+            Auth["JWT Auth"]
+            Router["Request Router"]
+            
+            subgraph Agents["Multi-Agent System"]
+                Orch["Orchestrator Agent"]
+                Task["Task Agent"]
+                Calendar["Calendar Agent"]
+                Info["Info Agent"]
+            end
+            
+            DB["SQLAlchemy + asyncpg"]
+        end
+    end
+
+    subgraph Supabase["Supabase"]
+        PG["PostgreSQL"]
+        AuthSupabase["Auth"]
+    end
+
+    subgraph Gemini["Google Gemini 2.0 Flash"]
+        AI["AI Inference"]
+    end
+
+    UI --> API
+    API --> CloudRun
+    API --> SC
+    SC --> Supabase
+    
+    CloudRun --> Auth
+    Auth --> Router
+    Router --> Orch
+    Orch --> Task
+    Orch --> Calendar
+    Orch --> Info
+    
+    Task --> AI
+    Calendar --> AI
+    Info --> AI
+    
+    Orch --> DB
+    DB --> PG
+    PG --> AuthSupabase
+```
+
+## App Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as Frontend
+    participant API as Backend
+    participant Orch as Orchestrator
+    participant Agent as Specialized Agents
+    participant DB as Database
+    participant AI as Gemini
+
+    User->>UI: Natural language input
+    UI->>API: POST /api/chat (bearer token)
+    API->>Orch: Route to orchestrator
+    Orch->>AI: Analyze intent + context
+    AI-->>Orch: Intent + required agents
+
+    alt Task intent
+        Orch->>Agent: Invoke Task Agent
+        Agent->>AI: Generate todos / update status
+        AI-->>Agent: Structured response
+        Agent->>DB: CRUD operations
+    end
+
+    alt Calendar intent
+        Orch->>Agent: Invoke Calendar Agent
+        Agent->>AI: Parse event details
+        AI-->>Agent: Structured response
+        Agent->>DB: Create / update event
+    end
+
+    alt Info intent
+        Orch->>Agent: Invoke Info Agent
+        Agent->>AI: Store / retrieve knowledge
+        AI-->>Agent: Structured response
+        Agent->>DB: Note operations
+    end
+
+    DB-->>Agent: Confirm operation
+    Agent-->>UI: Structured response
+    UI-->>User: Render updated UI
+```
+
 ## Screens
 
-The design system and product flow are documented visually in the assets below.
-
-- [Logo](docs/assets/petal-logo.svg)
-- [Product showcase](docs/assets/petal-showcase.svg)
+Screenshots above show the full brutalist interface across all views.
 
 ## Local Setup
 
