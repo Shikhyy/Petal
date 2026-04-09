@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getEvents } from '../utils/api';
+import { createEvent, getEvents } from '../utils/api';
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -7,6 +7,10 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 export function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<any[]>([]);
+  const [quickTitle, setQuickTitle] = useState('');
+  const [quickDate, setQuickDate] = useState('');
+  const [quickLoading, setQuickLoading] = useState(false);
+  const [quickMessage, setQuickMessage] = useState('');
 
   useEffect(() => {
     const year = currentDate.getFullYear();
@@ -46,6 +50,35 @@ export function CalendarPage() {
     .filter(e => new Date(e.start_time) >= new Date())
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
     .slice(0, 5);
+
+  const handleQuickAdd = async () => {
+    setQuickMessage('');
+    if (!quickTitle.trim() || !quickDate) {
+      setQuickMessage('Add a title and date first.');
+      return;
+    }
+
+    setQuickLoading(true);
+    try {
+      const start = new Date(`${quickDate}T09:00:00`).toISOString();
+      const end = new Date(`${quickDate}T09:30:00`).toISOString();
+      await createEvent({ title: quickTitle.trim(), start_time: start, end_time: end });
+      setQuickTitle('');
+      setQuickDate('');
+      setQuickMessage('Event created.');
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const refreshed = await getEvents(
+        new Date(year, month, 1).toISOString(),
+        new Date(year, month + 1, 0).toISOString()
+      );
+      setEvents(refreshed);
+    } catch {
+      setQuickMessage('Calendar is unavailable right now.');
+    } finally {
+      setQuickLoading(false);
+    }
+  };
 
   return (
     <div className="cal-container">
@@ -106,13 +139,20 @@ export function CalendarPage() {
             <input 
               type="text" 
               placeholder="Event title..." 
+              value={quickTitle}
+              onChange={(e) => setQuickTitle(e.target.value)}
               style={{ width: '100%', marginBottom: '8px', fontSize: '11px' }}
             />
             <input 
               type="date" 
+              value={quickDate}
+              onChange={(e) => setQuickDate(e.target.value)}
               style={{ width: '100%', marginBottom: '8px', fontSize: '11px' }}
             />
-            <button style={{ width: '100%', fontSize: '10px', padding: '6px' }}>ADD EVENT</button>
+            <button onClick={handleQuickAdd} disabled={quickLoading} style={{ width: '100%', fontSize: '10px', padding: '6px' }}>
+              {quickLoading ? 'ADDING...' : 'ADD EVENT'}
+            </button>
+            {quickMessage && <div style={{ marginTop: '8px', fontSize: '11px', opacity: 0.7 }}>{quickMessage}</div>}
           </div>
         </div>
       </div>

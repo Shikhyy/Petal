@@ -7,8 +7,8 @@ RUN npm ci --no-audit --no-fund
 
 COPY . .
 
-ARG VITE_API_URL=http://localhost:8080/api/v1
-ARG VITE_WS_URL=ws://localhost:8080/api/v1
+ARG VITE_API_URL=https://petal-ycmhorzhoa-uc.a.run.app/api/v1
+ARG VITE_WS_URL=wss://petal-ycmhorzhoa-uc.a.run.app/api/v1
 ARG VITE_SUPABASE_URL=
 ARG VITE_SUPABASE_ANON_KEY=
 

@@ -9,11 +9,54 @@ REGION="us-central1"
 SERVICE_NAME="petal"
 IMAGE_NAME="petal-repo/petal"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ENV_FILE="${ROOT_DIR}/.env"
+
 GCLOUD="/Users/shikhar/google-cloud-sdk/bin/gcloud"
 
 echo "=== PETAL Cloud Run Deployment ==="
 echo "Project: $PROJECT_ID"
 echo "Region: $REGION"
+
+# Load environment variables from repository .env
+if [ ! -f "$ENV_FILE" ]; then
+  echo "Error: .env file not found at $ENV_FILE"
+  exit 1
+fi
+
+set -a
+source "$ENV_FILE"
+set +a
+
+required_vars=(
+  DATABASE_URL
+  GEMINI_API_KEY
+  SUPABASE_URL
+  SUPABASE_JWT_SECRET
+  JWT_SECRET
+)
+
+for var_name in "${required_vars[@]}"; do
+  if [ -z "${!var_name}" ]; then
+    echo "Error: Required env var '$var_name' is missing in .env"
+    exit 1
+  fi
+done
+
+ALLOWED_ORIGINS_VALUE="*"
+GEMINI_MODEL_VALUE="${GEMINI_MODEL:-gemini-2.0-flash}"
+DATABASE_URL_VALUE="$DATABASE_URL"
+
+# If DATABASE_URL points at the Supabase API host (<ref>.supabase.co),
+# rewrite it to the Postgres host (db.<ref>.supabase.co).
+if [[ "$DATABASE_URL_VALUE" =~ @([^.@/]+)\.supabase\.co(:[0-9]+)?/ ]]; then
+  ref_host="${BASH_REMATCH[1]}"
+  if [[ "$DATABASE_URL_VALUE" != *"@db.${ref_host}.supabase.co"* ]]; then
+    DATABASE_URL_VALUE="${DATABASE_URL_VALUE/@${ref_host}.supabase.co/@db.${ref_host}.supabase.co}"
+    echo "Adjusted DATABASE_URL host to db.${ref_host}.supabase.co"
+  fi
+fi
 
 # Step 1: Enable required APIs
 echo "Enabling required APIs..."
@@ -51,13 +94,13 @@ $GCLOUD run deploy $SERVICE_NAME \
   --region $REGION \
   --allow-unauthenticated \
   --set-env-vars="\
-DATABASE_URL=${DATABASE_URL},\
+DATABASE_URL=${DATABASE_URL_VALUE},\
 GEMINI_API_KEY=${GEMINI_API_KEY},\
-GEMINI_MODEL=gemini-2.0-flash,\
+GEMINI_MODEL=${GEMINI_MODEL_VALUE},\
 SUPABASE_URL=${SUPABASE_URL},\
 SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET},\
 JWT_SECRET=${JWT_SECRET},\
-ALLOWED_ORIGINS=*" \
+ALLOWED_ORIGINS=${ALLOWED_ORIGINS_VALUE}" \
   --memory=2Gi \
   --cpu=2
 

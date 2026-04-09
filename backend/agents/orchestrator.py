@@ -2,6 +2,7 @@ import json
 import re
 import logging
 import uuid
+import asyncio
 
 from google import genai
 from google.genai import types
@@ -245,43 +246,41 @@ async def execute_tool(tool_name: str, params: dict, user_id: str) -> str:
             return f"Error: {str(e)}"
 
 
-async def run_agent(user_message: str, session_id: str) -> dict:
+async def run_agent(user_message: str, session_id: str, user_id: str | None = None) -> dict:
     import time
 
     start_time = time.time()
+
     client = get_genai_client()
 
-    user_id = None
-    try:
-        if session_id and "_" in session_id:
-            parts = session_id.split("_")
-            if len(parts) >= 2:
-                potential_uuid = parts[1]
-                try:
-                    uuid.UUID(potential_uuid)
-                    user_id = potential_uuid
-                except ValueError:
-                    pass
-        if not user_id and session_id:
-            try:
+    if not user_id:
+        try:
+            if session_id:
                 uuid.UUID(session_id)
                 user_id = session_id
-            except ValueError:
-                pass
-    except Exception:
-        pass
+        except Exception:
+            pass
 
     if not user_id:
         user_id = str(uuid.uuid4())
 
     logger.info(f"Processing message for user {user_id}: {user_message[:50]}...")
 
-    # Get conversation history for context
-    history = await get_conversation_history(session_id)
+    # Get conversation history for context, but do not block chat if storage is slow.
+    try:
+        history = await asyncio.wait_for(get_conversation_history(session_id), timeout=2)
+    except Exception:
+        history = []
     context = build_context_from_history(history)
 
-    # Save user message to history
-    await save_message_to_history(user_id, session_id, "user", user_message)
+    # Save user message to history, but keep the chat response path fast.
+    try:
+        await asyncio.wait_for(
+            save_message_to_history(user_id, session_id, "user", user_message),
+            timeout=2,
+        )
+    except Exception:
+        pass
 
     # First, try routing to specialized agents
     try:
@@ -294,7 +293,13 @@ async def run_agent(user_message: str, session_id: str) -> dict:
             latency_ms = round((time.time() - start_time) * 1000, 2)
 
             # Save assistant response to history
-            await save_message_to_history(user_id, session_id, "assistant", reply_text)
+            try:
+                await asyncio.wait_for(
+                    save_message_to_history(user_id, session_id, "assistant", reply_text),
+                    timeout=2,
+                )
+            except Exception:
+                pass
 
             return {
                 "reply": reply_text,
@@ -310,32 +315,63 @@ async def run_agent(user_message: str, session_id: str) -> dict:
                 "latency_ms": latency_ms,
             }
     except Exception as e:
-        logger.warning(f"Routing failed, falling back to LLM: {e}")
+        logger.warning(f"Routing failed, falling back to general chat: {e}")
+
+    def fallback_reply() -> str:
+        msg = user_message.lower()
+        if any(x in msg for x in ["task", "todo", "remind", "deadline", "priority"]):
+            return "I can help with tasks, but I need a clearer instruction like create, list, update, or delete."
+        if any(x in msg for x in ["note", "notes", "remember", "knowledge"]):
+            return "I can help with notes. Try asking me to save a note, list notes, or search notes."
+        if any(x in msg for x in ["calendar", "schedule", "meeting", "event", "appointment"]):
+            return "I can help with calendar-related requests. If you want to schedule something, include the title, date, and time."
+        return "I’m PETAL’s orchestrator. I can manage tasks, notes, and calendar requests. Ask me to create, list, update, or delete something."
 
     # Fall back to LLM-based tool calling
     system_with_context = ORCHESTRATOR_PROMPT
     if context:
         system_with_context = f"{ORCHESTRATOR_PROMPT}\n\nPrevious conversation:\n{context}\n\nRemember to consider the conversation history above when responding."
 
-    response = await client.aio.models.generate_content(
-        model=settings.GEMINI_MODEL,
-        contents=user_message,
-        config=types.GenerateContentConfig(
-            system_instruction=system_with_context,
-            tools=[
-                types.Tool(
-                    function_declarations=[
-                        types.FunctionDeclaration(
-                            name=sch["name"],
-                            description=sch["description"],
-                            parameters=sch["parameters"],
-                        )
-                        for sch in TOOL_SCHEMA.values()
-                    ]
-                )
-            ],
-        ),
-    )
+    try:
+        response = await client.aio.models.generate_content(
+            model=settings.GEMINI_MODEL,
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_with_context,
+                tools=[
+                    types.Tool(
+                        function_declarations=[
+                            types.FunctionDeclaration(
+                                name=sch["name"],
+                                description=sch["description"],
+                                parameters=sch["parameters"],
+                            )
+                            for sch in TOOL_SCHEMA.values()
+                        ]
+                    )
+                ],
+            ),
+        )
+    except Exception as e:
+        logger.warning(f"Gemini unavailable, using fallback chat reply: {e}")
+        reply_text = fallback_reply()
+        latency_ms = round((time.time() - start_time) * 1000, 2)
+
+        try:
+            await asyncio.wait_for(
+                save_message_to_history(user_id, session_id, "assistant", reply_text),
+                timeout=2,
+            )
+        except Exception:
+            pass
+
+        return {
+            "reply": reply_text,
+            "agents_invoked": ["orchestrator"],
+            "tool_calls": [],
+            "session_id": session_id,
+            "latency_ms": latency_ms,
+        }
 
     # Check if model wants to call a function
     if response.candidates and response.candidates[0].content.parts:
@@ -357,9 +393,13 @@ async def run_agent(user_message: str, session_id: str) -> dict:
                 latency_ms = round((time.time() - start_time) * 1000, 2)
 
                 # Save assistant response to history
-                await save_message_to_history(
-                    user_id, session_id, "assistant", reply_text
-                )
+                try:
+                    await asyncio.wait_for(
+                        save_message_to_history(user_id, session_id, "assistant", reply_text),
+                        timeout=2,
+                    )
+                except Exception:
+                    pass
 
                 return {
                     "reply": reply_text,
@@ -376,11 +416,17 @@ async def run_agent(user_message: str, session_id: str) -> dict:
                 }
 
     # No tool call, return regular response
-    reply_text = response.text if response.text else "I couldn't process that request."
+    reply_text = response.text if response.text else fallback_reply()
     latency_ms = round((time.time() - start_time) * 1000, 2)
 
     # Save assistant response to history
-    await save_message_to_history(user_id, session_id, "assistant", reply_text)
+    try:
+        await asyncio.wait_for(
+            save_message_to_history(user_id, session_id, "assistant", reply_text),
+            timeout=2,
+        )
+    except Exception:
+        pass
 
     return {
         "reply": reply_text,

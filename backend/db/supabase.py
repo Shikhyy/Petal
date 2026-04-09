@@ -18,14 +18,10 @@ from ..config import settings
 
 
 def get_database_url() -> str:
-    """Get cleaned database URL."""
+    """Normalize database URL while preserving provider query parameters."""
     url = settings.DATABASE_URL
 
     logger.info(f"Original DATABASE_URL: {url[:50]}...")
-
-    if "?" in url:
-        url = url.split("?")[0]
-        logger.info("Removed query params from URL")
 
     if not url.startswith("postgresql+asyncpg"):
         if url.startswith("postgresql://"):
@@ -45,8 +41,8 @@ try:
         poolclass=NullPool,
         connect_args={
             "ssl": "require",
-            "timeout": 30,
-            "command_timeout": 30,
+            "timeout": 5,
+            "command_timeout": 5,
         },
         pool_pre_ping=True,
     )

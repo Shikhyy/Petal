@@ -4,6 +4,7 @@ from slowapi.util import get_remote_address
 import time
 import re
 import logging
+import uuid
 
 from ...agents.orchestrator import run_agent
 from ...api.middleware import get_user_or_dev
@@ -40,10 +41,17 @@ async def chat(
         raise HTTPException(status_code=400, detail="Empty message")
 
     start = time.time()
-    session_id = req.session_id or f"sess_{user['user_id']}_{int(start)}"
+    session_id = req.session_id
+    if session_id:
+        try:
+            uuid.UUID(session_id)
+        except ValueError:
+            session_id = None
+    if not session_id:
+        session_id = str(uuid.uuid4())
 
     try:
-        result = await run_agent(sanitized_message, session_id)
+        result = await run_agent(sanitized_message, session_id, user.get("user_id"))
     except Exception as e:
         logger.error(f"Chat error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

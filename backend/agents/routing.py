@@ -1,6 +1,7 @@
 import re
 import logging
 import uuid
+import asyncio
 from typing import Optional
 
 from ..config import settings
@@ -92,7 +93,7 @@ class AgentRouter:
         async with async_session() as db:
             msg_lower = user_message.lower()
 
-            if "create" in msg_lower or "add" in msg_lower or "new" in msg_lower:
+            if any(x in msg_lower for x in ["create", "add", "new"]):
                 title = self._extract_title(user_message)
                 priority = self._extract_priority(user_message)
                 result = await task_tools.create_task(
@@ -104,7 +105,7 @@ class AgentRouter:
                     "tool": "create_task",
                 }
 
-            if "list" in msg_lower or "show" in msg_lower:
+            if any(x in msg_lower for x in ["list", "show", "view", "all"]):
                 tasks = await task_tools.list_tasks(db, user_id)
                 if not tasks:
                     return {
@@ -114,11 +115,57 @@ class AgentRouter:
                     }
                 lines = ["Your tasks:"]
                 for t in tasks:
-                    lines.append(f"- [{t['status']}] {t['title']} ({t['priority']})")
+                    lines.append(
+                        f"- [{t['status']}] {t['title']} ({t['priority']}) ID: {t['id']}"
+                    )
                 return {
                     "reply": "\n".join(lines),
                     "agent": "task_agent",
                     "tool": "list_tasks",
+                }
+
+            task_id = self._extract_uuid(user_message)
+            if any(x in msg_lower for x in ["update", "edit", "change", "modify", "complete", "done", "finish", "mark"]):
+                if not task_id:
+                    return {
+                        "reply": "Please include the task ID so I can update it.",
+                        "agent": "task_agent",
+                        "tool": "update_task",
+                    }
+
+                status = self._extract_task_status(msg_lower)
+                result = await task_tools.update_task(
+                    db,
+                    user_id,
+                    task_id,
+                    status=status,
+                )
+                if not result:
+                    return {
+                        "reply": "Task not found.",
+                        "agent": "task_agent",
+                        "tool": "update_task",
+                    }
+
+                return {
+                    "reply": f"Updated task: {result['title']} ({result['status']})",
+                    "agent": "task_agent",
+                    "tool": "update_task",
+                }
+
+            if any(x in msg_lower for x in ["delete", "remove", "cancel"]):
+                if not task_id:
+                    return {
+                        "reply": "Please include the task ID so I can delete it.",
+                        "agent": "task_agent",
+                        "tool": "delete_task",
+                    }
+
+                deleted = await task_tools.delete_task(db, user_id, task_id)
+                return {
+                    "reply": "Task deleted." if deleted else "Task not found.",
+                    "agent": "task_agent",
+                    "tool": "delete_task",
                 }
 
             return {
@@ -157,7 +204,57 @@ class AgentRouter:
         async with async_session() as db:
             msg_lower = user_message.lower()
 
-            if "save" in msg_lower or "note" in msg_lower or "remember" in msg_lower:
+            if any(x in msg_lower for x in ["search", "find", "lookup"]):
+                query = self._extract_search_query(user_message)
+                notes = await notes_tools.list_notes(db, user_id)
+                if not query:
+                    return {
+                        "reply": "Please provide a search query for your notes.",
+                        "agent": "info_agent",
+                        "tool": "search_notes",
+                    }
+
+                matches = []
+                query_lower = query.lower()
+                for note in notes:
+                    haystack = f"{note['title']} {note.get('body', '')} {' '.join(note.get('tags', []))}".lower()
+                    if query_lower in haystack:
+                        matches.append(note)
+
+                if not matches:
+                    return {
+                        "reply": f"No notes matched '{query}'.",
+                        "agent": "info_agent",
+                        "tool": "search_notes",
+                    }
+
+                lines = [f"Notes matching '{query}':"]
+                for n in matches[:10]:
+                    lines.append(f"- {n['title']} ID: {n['id']}")
+                return {
+                    "reply": "\n".join(lines),
+                    "agent": "info_agent",
+                    "tool": "search_notes",
+                }
+
+            if any(x in msg_lower for x in ["list", "show", "view", "all"]):
+                notes = await notes_tools.list_notes(db, user_id)
+                if not notes:
+                    return {
+                        "reply": "No notes found.",
+                        "agent": "info_agent",
+                        "tool": "list_notes",
+                    }
+                lines = ["Your notes:"]
+                for n in notes:
+                    lines.append(f"- {n['title']} ID: {n['id']}")
+                return {
+                    "reply": "\n".join(lines),
+                    "agent": "info_agent",
+                    "tool": "list_notes",
+                }
+
+            if any(x in msg_lower for x in ["save", "create", "add", "remember", "write"]):
                 title = self._extract_title(user_message)
                 body = self._extract_body(user_message)
                 result = await notes_tools.save_note(
@@ -169,27 +266,10 @@ class AgentRouter:
                     "tool": "save_note",
                 }
 
-            if "search" in msg_lower or "find" in msg_lower:
-                return {
-                    "reply": "Please provide a search query for your notes.",
-                    "agent": "info_agent",
-                    "tool": "search",
-                }
-
-            notes = await notes_tools.list_notes(db, user_id)
-            if not notes:
-                return {
-                    "reply": "No notes found.",
-                    "agent": "info_agent",
-                    "tool": "list_notes",
-                }
-            lines = ["Your notes:"]
-            for n in notes:
-                lines.append(f"- {n['title']}")
             return {
-                "reply": "\n".join(lines),
+                "reply": "I can help you save, list, or search notes.",
                 "agent": "info_agent",
-                "tool": "list_notes",
+                "tool": "help",
             }
 
     def _extract_title(self, message: str) -> str:
@@ -224,6 +304,34 @@ class AgentRouter:
             return "low"
         return "medium"
 
+    def _extract_uuid(self, message: str) -> str | None:
+        match = re.search(
+            r"\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b",
+            message,
+            re.IGNORECASE,
+        )
+        return match.group(0) if match else None
+
+    def _extract_task_status(self, message: str) -> str | None:
+        if "in progress" in message or "progress" in message or "working" in message:
+            return "in_progress"
+        if "done" in message or "complete" in message or "finished" in message:
+            return "done"
+        if "todo" in message or "to do" in message:
+            return "todo"
+        return None
+
+    def _extract_search_query(self, message: str) -> str:
+        patterns = [
+            r"(?:search|find|lookup)(?:\s+my)?(?:\s+notes)?(?:\s+for|\s+about|\s+on)?\s+(.+)$",
+            r"(?:notes?)(?:\s+about|\s+for)\s+(.+)$",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, message, re.IGNORECASE)
+            if match:
+                return match.group(1).strip().strip('"\'')
+        return ""
+
 
 router = AgentRouter()
 
@@ -238,7 +346,24 @@ async def route_to_agent(user_message: str, user_id: str) -> dict:
     agent_name, intent = route
 
     handler = router.agents[agent_name]["handler"]
-    result = await handler(user_message, user_id)
+    try:
+        result = await asyncio.wait_for(handler(user_message, user_id), timeout=25)
+    except asyncio.TimeoutError:
+        return {
+            "agent": agent_name,
+            "intent": intent,
+            "handled": True,
+            "reply": f"{agent_name.capitalize()} is taking too long right now. Please try again in a moment.",
+            "tool": "timeout",
+        }
+    except Exception as e:
+        return {
+            "agent": agent_name,
+            "intent": intent,
+            "handled": True,
+            "reply": f"{agent_name.capitalize()} could not complete that request: {e}",
+            "tool": "error",
+        }
 
     return {
         "agent": agent_name,

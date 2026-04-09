@@ -22,18 +22,22 @@ export function useTasks() {
 
   const addTask = async (task: { title: string; description?: string; priority?: string; tags?: string[]; status?: string }) => {
     const created = await createTask(task);
-    setTasks((prev) => [created, ...prev]);
+    await fetchTasks();
     return created;
   };
 
   const moveTask = async (id: string, status: Task['status']) => {
     const updated = await updateTask(id, { status });
-    setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+    if (updated) {
+      await fetchTasks();
+      return updated;
+    }
+    await fetchTasks();
   };
 
   const removeTask = async (id: string) => {
     await deleteTask(id);
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+    await fetchTasks();
   };
 
   return { tasks, loading, fetchTasks, addTask, moveTask, removeTask };

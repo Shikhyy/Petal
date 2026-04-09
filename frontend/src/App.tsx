@@ -9,6 +9,7 @@ import { ConnectionsPage } from './pages/ConnectionsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { HelpPage } from './pages/HelpPage';
 import DashboardPage from './pages/DashboardPage';
+import AgentsPage from './pages/AgentsPage';
 import { ActivityPage } from './pages/ActivityPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { Topbar } from './components/Topbar';
@@ -61,7 +62,7 @@ function AppLayout() {
         <ProfilePage />
       </div>
       <div className={`page ${path === '/app/agents' ? 'active' : ''}`}>
-        <ChatPage />
+        <AgentsPage />
       </div>
     </main>
   );

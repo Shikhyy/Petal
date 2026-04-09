@@ -22,13 +22,13 @@ export function useNotes() {
 
   const addNote = async (note: { title: string; body?: string; tags?: string[] }) => {
     const created = await createNote(note);
-    setNotes((prev) => [created, ...prev]);
+    await fetchNotes();
     return created;
   };
 
   const updateNote = async (id: string, data: { title?: string; body?: string; tags?: string[]; deleted?: boolean }) => {
     const updated = await apiUpdateNote(id, data);
-    setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
+    await fetchNotes();
     return updated;
   };
 
