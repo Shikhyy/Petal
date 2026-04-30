@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createEvent, getEvents } from '../utils/api';
+import { createEvent, getApiErrorMessage, getEvents } from '../utils/api';
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -11,6 +11,8 @@ export function CalendarPage() {
   const [quickDate, setQuickDate] = useState('');
   const [quickLoading, setQuickLoading] = useState(false);
   const [quickMessage, setQuickMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const year = currentDate.getFullYear();
@@ -18,9 +20,15 @@ export function CalendarPage() {
     const start = new Date(year, month, 1).toISOString();
     const end = new Date(year, month + 1, 0).toISOString();
 
+    setLoading(true);
+    setError(null);
     getEvents(start, end)
       .then(setEvents)
-      .catch(() => setEvents([]));
+      .catch((err) => {
+        setEvents([]);
+        setError(getApiErrorMessage(err, 'Failed to load calendar events.'));
+      })
+      .finally(() => setLoading(false));
   }, [currentDate]);
 
   const year = currentDate.getFullYear();
@@ -73,8 +81,8 @@ export function CalendarPage() {
         new Date(year, month + 1, 0).toISOString()
       );
       setEvents(refreshed);
-    } catch {
-      setQuickMessage('Calendar is unavailable right now.');
+    } catch (err) {
+      setQuickMessage(getApiErrorMessage(err, 'Calendar is unavailable right now.'));
     } finally {
       setQuickLoading(false);
     }
@@ -82,6 +90,11 @@ export function CalendarPage() {
 
   return (
     <div className="cal-container">
+      {error && (
+        <div style={{ margin: '10px 0', padding: '10px 12px', border: '2px solid var(--ink)', background: 'rgba(239,68,68,0.12)', color: '#991b1b', fontFamily: 'var(--mono)', fontSize: '11px' }}>
+          {error}
+        </div>
+      )}
       <div className="cal-main-panel">
         <div className="cal-nav-bar">
           <button className="cal-nav-btn" onClick={prevMonth}>←</button>
@@ -116,7 +129,7 @@ export function CalendarPage() {
           <div className="ep-header">Upcoming Events</div>
           <div className="ep-body">
             {upcomingEvents.length === 0 ? (
-              <div style={{ fontSize: '11px', opacity: 0.6 }}>No upcoming events</div>
+              <div style={{ fontSize: '11px', opacity: 0.6 }}>{loading ? 'Loading events...' : 'No upcoming events'}</div>
             ) : (
               upcomingEvents.map((ev) => (
                 <div key={ev.id} className="ev-row">

@@ -176,6 +176,7 @@ class GmailMCPClient(MCPClient):
 
 _calendar_client = None
 _gmail_client = None
+_notes_client = None
 
 
 def get_calendar_mcp() -> CalendarMCPClient:
@@ -194,12 +195,77 @@ def get_gmail_mcp() -> GmailMCPClient:
     return _gmail_client
 
 
+class NotesMCPClient(MCPClient):
+    """MCP client for notes operations."""
+
+    def __init__(self):
+        super().__init__(settings.NOTES_MCP_URL or "")
+
+    async def save_note(
+        self,
+        title: str,
+        body: str,
+        tags: list[str] | None = None,
+    ) -> dict:
+        if not self.server_url:
+            return {
+                "error": "Notes MCP not configured. Set NOTES_MCP_URL in environment."
+            }
+
+        return await self.call_tool(
+            "save_note",
+            {
+                "title": title,
+                "body": body,
+                "tags": tags or [],
+            },
+        )
+
+    async def list_notes(self, limit: int = 50) -> dict:
+        if not self.server_url:
+            return {
+                "error": "Notes MCP not configured. Set NOTES_MCP_URL in environment."
+            }
+
+        return await self.call_tool(
+            "list_notes",
+            {
+                "limit": limit,
+            },
+        )
+
+    async def search_notes(self, query: str, limit: int = 10) -> dict:
+        if not self.server_url:
+            return {
+                "error": "Notes MCP not configured. Set NOTES_MCP_URL in environment."
+            }
+
+        return await self.call_tool(
+            "search_notes",
+            {
+                "query": query,
+                "limit": limit,
+            },
+        )
+
+
+def get_notes_mcp() -> NotesMCPClient:
+    """Get cached Notes MCP client."""
+    global _notes_client
+    if _notes_client is None:
+        _notes_client = NotesMCPClient()
+    return _notes_client
+
+
 async def close_mcp_clients():
     """Close all MCP clients."""
-    global _calendar_client, _gmail_client
+    global _calendar_client, _gmail_client, _notes_client
     if _calendar_client:
         await _calendar_client.close()
         _calendar_client = None
     if _gmail_client:
         await _gmail_client.close()
         _gmail_client = None
+    if _notes_client:
+        await _notes_client.close()
+        _notes_client = None

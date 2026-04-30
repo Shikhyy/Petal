@@ -1,0 +1,158 @@
+@media (max-width: 1260px) {
+  .agent-pills {
+    overflow-x: auto;
+    max-width: 44vw;
+  }
+
+  .apill {
+    min-width: 104px;
+    padding: 0 var(--space-2);
+  }
+
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .task-board {
+    grid-template-columns: 1fr;
+  }
+
+  .board-col {
+    border-right: none;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .board-col:last-child {
+    border-bottom: none;
+  }
+
+  .cal-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  .app {
+    grid-template-columns: 96px 1fr;
+  }
+
+  .topbar-logo {
+    min-width: 96px;
+    justify-content: center;
+    padding: 0 var(--space-2);
+  }
+
+  .logo-sub,
+  .nav-text,
+  .nav-badge,
+  .user-info {
+    display: none;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding: var(--space-3);
+  }
+
+  .nav-label {
+    padding: var(--space-2);
+  }
+
+  .notes-container {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .notes-list-col,
+  .note-editor-col {
+    border: var(--border-strong);
+  }
+
+  .notes-list-col {
+    max-height: 240px;
+  }
+
+  .agent-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 70px auto 1fr;
+  }
+
+  .topbar {
+    grid-column: 1;
+  }
+
+  .topbar-status {
+    font-size: 10px;
+    padding: 0 var(--space-2);
+  }
+
+  .agent-pills {
+    display: none;
+  }
+
+  .sidebar {
+    border-right: none;
+    border-bottom: var(--border-strong);
+    max-height: 180px;
+  }
+
+  .side-nav {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    overflow-y: auto;
+  }
+
+  .nav-section {
+    border-bottom: none;
+    border-right: 1px solid rgba(0, 0, 0, .1);
+  }
+
+  .nav-label {
+    font-size: 8px;
+    padding: var(--space-2);
+  }
+
+  .side-bottom {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .messages,
+  .input-area,
+  .tasks-container,
+  .cal-container,
+  .notes-container {
+    padding: var(--space-3);
+  }
+
+  .page-brutal-header,
+  .stats-row,
+  .task-board,
+  .cal-main-panel,
+  .event-panel,
+  .notes-list-col,
+  .note-editor-col,
+  .agent-healthcheck-panel {
+    border-width: 3px;
+  }
+
+  .ch-title,
+  .pbh-title,
+  .agent-control-title,
+  .cal-month-txt {
+    font-size: 24px;
+  }
+
+  .auth-card h2 {
+    font-size: 42px;
+  }
+
+  .auth-hero h1 {
+    font-size: 40px;
+  }
+}

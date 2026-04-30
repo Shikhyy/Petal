@@ -1,15 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAgentsStatus, AgentStatus, wsClient } from '../utils/api';
+import { getAgentsStatus, getApiErrorMessage, AgentStatus, wsClient } from '../utils/api';
 
 export function useAgents() {
   const [agents, setAgents] = useState<AgentStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchAgents = useCallback(async () => {
     try {
+      setError(null);
       const data = await getAgentsStatus();
       setAgents(data.agents);
-    } catch {
-      // Silently fail
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to load agents status.'));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -17,6 +22,7 @@ export function useAgents() {
     fetchAgents();
     
     const unsubscribe = wsClient.onAgentStatus((updatedAgents) => {
+      setError(null);
       setAgents(updatedAgents);
     });
     
@@ -27,5 +33,5 @@ export function useAgents() {
     };
   }, [fetchAgents]);
 
-  return { agents, refetch: fetchAgents };
+  return { agents, loading, error, refetch: fetchAgents };
 }

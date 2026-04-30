@@ -57,6 +57,7 @@ class CalendarClient:
             return
 
         try:
+            import google.auth
             from google.oauth2 import service_account
             from googleapiclient.discovery import build
 
@@ -66,7 +67,9 @@ class CalendarClient:
                     scopes=["https://www.googleapis.com/auth/calendar"],
                 )
             else:
-                raise ValueError("GOOGLE_APPLICATION_CREDENTIALS not set")
+                credentials, _ = google.auth.default(
+                    scopes=["https://www.googleapis.com/auth/calendar"]
+                )
 
             self.service = build("calendar", "v3", credentials=credentials)
             self._authenticated = True

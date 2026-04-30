@@ -3,9 +3,11 @@ import logging
 import uuid
 import asyncio
 from typing import Optional
+from datetime import datetime, timedelta, timezone
 
 from ..config import settings
-from ..tools import task_tools, notes_tools
+from ..tools import task_tools, notes_tools, calendar_tools
+from ..tools.mcp_client import get_calendar_mcp, get_notes_mcp
 from ..db.supabase import async_session
 
 logger = logging.getLogger(__name__)
@@ -59,9 +61,14 @@ class AgentRouter:
         """Route message to appropriate agent and return (agent_name, intent)."""
         msg_lower = user_message.lower()
 
+        def has_keyword(text: str, keyword: str) -> bool:
+            if " " in keyword:
+                return keyword in text
+            return re.search(rf"\b{re.escape(keyword)}\b", text) is not None
+
         for agent_name, agent_info in self.agents.items():
             for keyword in agent_info["keywords"]:
-                if keyword in msg_lower:
+                if has_keyword(msg_lower, keyword):
                     intent = self._extract_intent(msg_lower, keyword)
                     logger.info(f"Routed to {agent_name} agent with intent: {intent}")
                     return agent_name, intent
@@ -176,25 +183,131 @@ class AgentRouter:
 
     async def _handle_calendar_request(self, user_message: str, user_id: str) -> dict:
         """Handle calendar-related requests."""
-        msg_lower = user_message.lower()
-
-        if not settings.GCAL_MCP_URL:
-            return {
-                "reply": "Calendar integration is not configured. Please set GCAL_MCP_URL in your environment.",
-                "agent": "cal_agent",
-                "tool": "unavailable",
-            }
+        try:
+            uuid.UUID(user_id)
+        except ValueError:
+            user_id = str(uuid.uuid4())
 
         msg_lower = user_message.lower()
-        if "schedule" in msg_lower or "meeting" in msg_lower or "book" in msg_lower:
-            return {
-                "reply": "I can help schedule a meeting. Please provide the title, date, and time.",
-                "agent": "cal_agent",
-                "tool": "create_event",
-            }
+
+        def has_keyword(text: str, keyword: str) -> bool:
+            if " " in keyword:
+                return keyword in text
+            return re.search(rf"\b{re.escape(keyword)}\b", text) is not None
+
+        def has_any_keywords(text: str, keywords: list[str]) -> bool:
+            return any(has_keyword(text, keyword) for keyword in keywords)
+
+        async with async_session() as db:
+            if has_any_keywords(msg_lower, ["schedule", "meeting", "event", "book", "appointment", "calendar"]):
+                payload = self._extract_calendar_payload(user_message)
+                if not payload:
+                    return {
+                        "reply": "I can schedule this, but I need a date/time. Try: Schedule Design Review tomorrow at 3pm for 45 minutes.",
+                        "agent": "cal_agent",
+                        "tool": "create_event",
+                        "handled": False,
+                    }
+
+                google_event_id = None
+                meet_link = None
+                if settings.GCAL_MCP_URL:
+                    mcp = get_calendar_mcp()
+                    mcp_result = await mcp.create_event(
+                        title=payload["title"],
+                        start_time=payload["start_time"].isoformat(),
+                        end_time=payload["end_time"].isoformat(),
+                        attendees=payload.get("attendees", []),
+                        location=payload.get("location"),
+                    )
+                    if "error" not in mcp_result:
+                        google_event_id = mcp_result.get("event_id")
+                        meet_link = mcp_result.get("meet_link")
+
+                event = await calendar_tools.create_event(
+                    db,
+                    user_id,
+                    title=payload["title"],
+                    start_time=payload["start_time"],
+                    end_time=payload["end_time"],
+                    location=payload.get("location"),
+                    attendees=payload.get("attendees", []),
+                    google_event_id=google_event_id,
+                    meet_link=meet_link,
+                    created_by_agent=True,
+                )
+
+                start_dt = datetime.fromisoformat(event["start_time"].replace("Z", "+00:00"))
+                end_dt = datetime.fromisoformat(event["end_time"].replace("Z", "+00:00"))
+                start_str = start_dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+                duration_minutes = int((end_dt - start_dt).total_seconds() / 60)
+                sync_msg = "synced to Google Calendar" if google_event_id else "saved locally"
+                meet_msg = f" Meet: {meet_link}" if meet_link else ""
+                return {
+                    "reply": f"Scheduled '{event['title']}' for {start_str} ({duration_minutes} min), {sync_msg}.{meet_msg} Event ID: {event['id']}",
+                    "agent": "cal_agent",
+                    "tool": "create_event",
+                }
+
+            if has_any_keywords(msg_lower, ["list", "show", "view", "upcoming", "what", "events"]):
+                events = await calendar_tools.list_events(
+                    db,
+                    user_id,
+                    limit=20,
+                    upcoming_only=True,
+                )
+
+                if not events:
+                    return {
+                        "reply": "No upcoming calendar events found.",
+                        "agent": "cal_agent",
+                        "tool": "list_events",
+                    }
+
+                lines = ["Upcoming events:"]
+                for event in events:
+                    local_time = datetime.fromisoformat(event["start_time"].replace("Z", "+00:00")).astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+                    lines.append(f"- {event['title']} at {local_time} (ID: {event['id']})")
+
+                return {
+                    "reply": "\n".join(lines),
+                    "agent": "cal_agent",
+                    "tool": "list_events",
+                }
+
+            if has_any_keywords(msg_lower, ["delete", "remove", "cancel"]):
+                event_id = self._extract_uuid(user_message)
+                if not event_id:
+                    return {
+                        "reply": "Please include the event ID so I can delete it.",
+                        "agent": "cal_agent",
+                        "tool": "delete_event",
+                    }
+
+                event = await calendar_tools.delete_event(db, user_id, event_id)
+                if not event:
+                    return {
+                        "reply": "Event not found.",
+                        "agent": "cal_agent",
+                        "tool": "delete_event",
+                    }
+
+                google_event_id = event.get("google_event_id")
+
+                if google_event_id and settings.GCAL_MCP_URL:
+                    mcp = get_calendar_mcp()
+                    mcp_result = await mcp.delete_event(google_event_id)
+                    if "error" in mcp_result:
+                        logger.warning("Failed deleting Google Calendar event %s: %s", google_event_id, mcp_result["error"])
+
+                return {
+                    "reply": "Calendar event deleted.",
+                    "agent": "cal_agent",
+                    "tool": "delete_event",
+                }
 
         return {
-            "reply": "I can help you schedule meetings or view calendar events.",
+            "reply": "I can help you schedule, list, or delete calendar events.",
             "agent": "cal_agent",
             "tool": "help",
         }
@@ -203,10 +316,10 @@ class AgentRouter:
         """Handle info/notes-related requests."""
         async with async_session() as db:
             msg_lower = user_message.lower()
+            notes_mcp = get_notes_mcp() if settings.NOTES_MCP_URL else None
 
             if any(x in msg_lower for x in ["search", "find", "lookup"]):
                 query = self._extract_search_query(user_message)
-                notes = await notes_tools.list_notes(db, user_id)
                 if not query:
                     return {
                         "reply": "Please provide a search query for your notes.",
@@ -215,11 +328,20 @@ class AgentRouter:
                     }
 
                 matches = []
-                query_lower = query.lower()
-                for note in notes:
-                    haystack = f"{note['title']} {note.get('body', '')} {' '.join(note.get('tags', []))}".lower()
-                    if query_lower in haystack:
-                        matches.append(note)
+                if notes_mcp:
+                    mcp_result = await notes_mcp.search_notes(query=query, limit=10)
+                    if "error" not in mcp_result:
+                        raw_results = mcp_result.get("results") or mcp_result.get("notes") or []
+                        if isinstance(raw_results, list):
+                            matches = raw_results
+
+                if not matches:
+                    notes = await notes_tools.list_notes(db, user_id)
+                    query_lower = query.lower()
+                    for note in notes:
+                        haystack = f"{note['title']} {note.get('body', '')} {' '.join(note.get('tags', []))}".lower()
+                        if query_lower in haystack:
+                            matches.append(note)
 
                 if not matches:
                     return {
@@ -238,7 +360,16 @@ class AgentRouter:
                 }
 
             if any(x in msg_lower for x in ["list", "show", "view", "all"]):
-                notes = await notes_tools.list_notes(db, user_id)
+                notes = []
+                if notes_mcp:
+                    mcp_result = await notes_mcp.list_notes(limit=50)
+                    if "error" not in mcp_result:
+                        raw_results = mcp_result.get("notes") or mcp_result.get("results") or []
+                        if isinstance(raw_results, list):
+                            notes = raw_results
+
+                if not notes:
+                    notes = await notes_tools.list_notes(db, user_id)
                 if not notes:
                     return {
                         "reply": "No notes found.",
@@ -257,9 +388,19 @@ class AgentRouter:
             if any(x in msg_lower for x in ["save", "create", "add", "remember", "write"]):
                 title = self._extract_title(user_message)
                 body = self._extract_body(user_message)
-                result = await notes_tools.save_note(
-                    db, user_id=user_id, title=title, body=body
-                )
+                result = None
+                if notes_mcp:
+                    mcp_result = await notes_mcp.save_note(title=title, body=body, tags=[])
+                    if "error" not in mcp_result:
+                        result = {
+                            "title": mcp_result.get("title", title),
+                            "id": mcp_result.get("id", "mcp-note"),
+                        }
+
+                if not result:
+                    result = await notes_tools.save_note(
+                        db, user_id=user_id, title=title, body=body
+                    )
                 return {
                     "reply": f"Saved note: {result['title']}",
                     "agent": "info_agent",
@@ -331,6 +472,70 @@ class AgentRouter:
             if match:
                 return match.group(1).strip().strip('"\'')
         return ""
+
+    def _extract_calendar_payload(self, message: str) -> dict | None:
+        msg = message.strip()
+        now = datetime.now(timezone.utc)
+
+        title = "Meeting"
+        titled_match = re.search(r"(?:called|titled|named)\s+[\"']?([^\"'\n]+)", msg, re.IGNORECASE)
+        if titled_match:
+            title = re.split(r"\b(?:tomorrow|today|at|on|for)\b", titled_match.group(1), maxsplit=1, flags=re.IGNORECASE)[0].strip()
+        else:
+            cleaned = re.sub(r"^(schedule|book|create|add)\s+(a\s+)?", "", msg, flags=re.IGNORECASE)
+            title = re.split(r"\b(?:tomorrow|today|at|on|for)\b", cleaned, maxsplit=1, flags=re.IGNORECASE)[0].strip(" .") or title
+
+        duration_minutes = 60
+        duration_match = re.search(r"for\s+(\d{1,3})\s*(min|minute|minutes|hr|hour|hours)", msg, re.IGNORECASE)
+        if duration_match:
+            amount = int(duration_match.group(1))
+            unit = duration_match.group(2).lower()
+            duration_minutes = amount * 60 if unit.startswith("h") else amount
+
+        day = None
+        if "tomorrow" in msg.lower():
+            day = (now + timedelta(days=1)).date()
+        elif "today" in msg.lower():
+            day = now.date()
+
+        iso_match = re.search(r"(\d{4}-\d{2}-\d{2})(?:[ t](\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?", msg, re.IGNORECASE)
+        if iso_match:
+            day = datetime.fromisoformat(iso_match.group(1)).date()
+            hour = int(iso_match.group(2) or 9)
+            minute = int(iso_match.group(3) or 0)
+            ampm = (iso_match.group(4) or "").lower()
+            if ampm == "pm" and hour < 12:
+                hour += 12
+            if ampm == "am" and hour == 12:
+                hour = 0
+            start_dt = datetime(day.year, day.month, day.day, hour, minute, tzinfo=timezone.utc)
+            return {
+                "title": title,
+                "start_time": start_dt,
+                "end_time": start_dt + timedelta(minutes=duration_minutes),
+                "location": None,
+                "attendees": [],
+            }
+
+        time_match = re.search(r"(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)", msg, re.IGNORECASE)
+        if day and time_match:
+            hour = int(time_match.group(1))
+            minute = int(time_match.group(2) or 0)
+            ampm = time_match.group(3).lower()
+            if ampm == "pm" and hour < 12:
+                hour += 12
+            if ampm == "am" and hour == 12:
+                hour = 0
+            start_dt = datetime(day.year, day.month, day.day, hour, minute, tzinfo=timezone.utc)
+            return {
+                "title": title,
+                "start_time": start_dt,
+                "end_time": start_dt + timedelta(minutes=duration_minutes),
+                "location": None,
+                "attendees": [],
+            }
+
+        return None
 
 
 router = AgentRouter()

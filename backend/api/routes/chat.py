@@ -54,7 +54,13 @@ async def chat(
         result = await run_agent(sanitized_message, session_id, user.get("user_id"))
     except Exception as e:
         logger.error(f"Chat error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        msg = str(e)
+        if "RESOURCE_EXHAUSTED" in msg or "Quota exceeded" in msg:
+            raise HTTPException(
+                status_code=503,
+                detail="AI provider capacity is temporarily exhausted. Please retry shortly.",
+            )
+        raise HTTPException(status_code=500, detail="Chat service unavailable")
 
     latency_ms = int((time.time() - start) * 1000)
     return ChatResponse(

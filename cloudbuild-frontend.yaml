@@ -6,6 +6,18 @@ steps:
       - '-c'
       - |
         set -euo pipefail
+        if [[ -z "${_API_URL}" || "${_API_URL}" == http://localhost* ]]; then
+          echo "_API_URL must point to your deployed backend Cloud Run URL (not localhost)."
+          exit 1
+        fi
+        if [[ -z "${_WS_URL}" || "${_WS_URL}" == ws://localhost* ]]; then
+          echo "_WS_URL must point to your deployed backend Cloud Run URL using wss:// (not localhost)."
+          exit 1
+        fi
+        if [[ -z "${_SUPABASE_URL}" || -z "${_SUPABASE_ANON_KEY}" || "${_SUPABASE_ANON_KEY}" == "REPLACE_WITH_SUPABASE_ANON_KEY" ]]; then
+          echo "_SUPABASE_URL and _SUPABASE_ANON_KEY are required for production auth."
+          exit 1
+        fi
         docker build \
           --build-arg VITE_API_URL="${_API_URL}" \
           --build-arg VITE_WS_URL="${_WS_URL}" \
@@ -43,10 +55,10 @@ steps:
 substitutions:
   _REGION: us-central1
   _REPO: petal-repo
-  _API_URL: http://localhost:8080/api/v1
-  _WS_URL: ws://localhost:8080/api/v1
+  _API_URL: https://petal-api-ycmhorzhoa-uc.a.run.app/api/v1
+  _WS_URL: wss://petal-api-ycmhorzhoa-uc.a.run.app/api/v1
   _SUPABASE_URL: https://uyaufdgftetpctpgnbvl.supabase.co
-  _SUPABASE_ANON_KEY: ''
+  _SUPABASE_ANON_KEY: REPLACE_WITH_SUPABASE_ANON_KEY
 
 options:
   logging: CLOUD_LOGGING_ONLY

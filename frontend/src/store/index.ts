@@ -9,6 +9,8 @@ interface AppState {
   clearMessages: () => void;
   tickerItems: string[];
   addTickerItem: (item: string) => void;
+  recentAgentActivity: Record<string, number>;
+  markAgentsActive: (agents: string[]) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -21,4 +23,13 @@ export const useStore = create<AppState>((set) => ({
   addTickerItem: (item) => set((state) => ({
     tickerItems: [...state.tickerItems.slice(-20), item],
   })),
+  recentAgentActivity: {},
+  markAgentsActive: (agents) => set((state) => {
+    const now = Date.now();
+    const next = { ...state.recentAgentActivity };
+    for (const agent of agents) {
+      if (agent) next[agent.toLowerCase()] = now;
+    }
+    return { recentAgentActivity: next };
+  }),
 }));

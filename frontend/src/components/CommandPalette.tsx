@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ComponentProps } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AppIcon } from './AppIcon';
 
 interface SearchResult {
   id: string;
   title: string;
   path: string;
-  icon: string;
+  icon: ComponentProps<typeof AppIcon>['name'];
   category: string;
 }
 
@@ -17,18 +18,18 @@ export function CommandPalette() {
   const navigate = useNavigate();
 
   const allResults: SearchResult[] = [
-    { id: '1', title: 'Dashboard', path: '/app/dashboard', icon: '◈', category: 'Main' },
-    { id: '2', title: 'Chat', path: '/app', icon: '💬', category: 'Main' },
-    { id: '3', title: 'Tasks', path: '/app/tasks', icon: '✓', category: 'Main' },
-    { id: '4', title: 'Calendar', path: '/app/calendar', icon: '📅', category: 'Main' },
-    { id: '5', title: 'Knowledge', path: '/app/knowledge', icon: '📝', category: 'Main' },
-    { id: '6', title: 'Agents', path: '/app/agents', icon: '⚡', category: 'Tools' },
-    { id: '7', title: 'MCP Servers', path: '/app/mcp', icon: '🔌', category: 'Tools' },
-    { id: '8', title: 'Connections', path: '/app/connections', icon: '🔗', category: 'Tools' },
-    { id: '9', title: 'Activity', path: '/app/activity', icon: '📊', category: 'Tools' },
-    { id: '10', title: 'Settings', path: '/app/settings', icon: '⚙️', category: 'System' },
-    { id: '11', title: 'Profile', path: '/app/profile', icon: '👤', category: 'System' },
-    { id: '12', title: 'Help', path: '/app/help', icon: '❓', category: 'System' },
+    { id: '1', title: 'Dashboard', path: '/app/dashboard', icon: 'dashboard', category: 'Main' },
+    { id: '2', title: 'Chat', path: '/app', icon: 'chat', category: 'Main' },
+    { id: '3', title: 'Tasks', path: '/app/tasks', icon: 'task', category: 'Main' },
+    { id: '4', title: 'Calendar', path: '/app/calendar', icon: 'calendar', category: 'Main' },
+    { id: '5', title: 'Knowledge', path: '/app/knowledge', icon: 'note', category: 'Main' },
+    { id: '6', title: 'Agents', path: '/app/agents', icon: 'agents', category: 'Tools' },
+    { id: '7', title: 'MCP Servers', path: '/app/mcp', icon: 'mcp', category: 'Tools' },
+    { id: '8', title: 'Activity', path: '/app/activity', icon: 'activity', category: 'Tools' },
+    { id: '9', title: 'Settings', path: '/app/settings', icon: 'settings', category: 'System' },
+    { id: '10', title: 'Profile', path: '/app/profile', icon: 'profile', category: 'System' },
+    { id: '11', title: 'Diagnostics', path: '/app/diagnostics', icon: 'diagnostics', category: 'System' },
+    { id: '12', title: 'Help', path: '/app/help', icon: 'help', category: 'System' },
   ];
 
   const filtered = query
@@ -104,7 +105,7 @@ export function CommandPalette() {
         }}
         title="Search (⌘K)"
       >
-        🔍
+        <AppIcon name="search" size={20} />
       </button>
     );
   }
@@ -141,7 +142,7 @@ export function CommandPalette() {
           alignItems: 'center',
           gap: '12px',
         }}>
-          <span style={{ fontSize: '18px' }}>🔍</span>
+          <AppIcon name="search" size={18} />
           <input
             ref={inputRef}
             value={query}
@@ -182,7 +183,7 @@ export function CommandPalette() {
                 transition: 'background 0.1s',
               }}
             >
-              <span style={{ fontSize: '16px' }}>{result.icon}</span>
+              <span style={{ display: 'grid', placeItems: 'center', width: '18px', height: '18px' }}><AppIcon name={result.icon} size={16} /></span>
               <span style={{ flex: 1, fontSize: '14px', fontWeight: 500 }}>{result.title}</span>
               <span style={{
                 fontFamily: 'var(--mono)',

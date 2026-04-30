@@ -1,26 +1,70 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useTasks } from '../hooks/useTasks';
+import { useNotes } from '../hooks/useNotes';
+import { getApiErrorMessage, getEvents } from '../utils/api';
+import { AppIcon } from '../components/AppIcon';
 
 export function ProfilePage() {
   const { user } = useAuth();
+  const { tasks, loading: tasksLoading, error: tasksError } = useTasks();
+  const { notes, loading: notesLoading, error: notesError } = useNotes();
   const [editing, setEditing] = useState(false);
-  const [displayName, setDisplayName] = useState(user?.email?.split('@')[0] || 'User');
-  const [bio, setBio] = useState('');
+  const [displayName, setDisplayName] = useState(() => localStorage.getItem('petal_profile_display_name') || user?.email?.split('@')[0] || 'User');
+  const [bio, setBio] = useState(() => localStorage.getItem('petal_profile_bio') || '');
+  const [upcomingEvents, setUpcomingEvents] = useState(0);
+  const [eventLoadError, setEventLoadError] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState('');
 
-  const stats = [
-    { label: 'Tasks Completed', value: '142' },
-    { label: 'Events Created', value: '38' },
-    { label: 'Notes Written', value: '127' },
-    { label: 'Agent Interactions', value: '1.2K' },
-  ];
+  useEffect(() => {
+    if (displayName.trim()) {
+      localStorage.setItem('petal_profile_display_name', displayName.trim());
+    }
+  }, [displayName]);
+
+  useEffect(() => {
+    localStorage.setItem('petal_profile_bio', bio);
+  }, [bio]);
+
+  useEffect(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30).toISOString();
+    setEventLoadError(null);
+
+    getEvents(start, end)
+      .then((events) => {
+        const count = events.filter((event: any) => new Date(event.start_time).getTime() >= Date.now()).length;
+        setUpcomingEvents(count);
+      })
+      .catch((err) => {
+        setUpcomingEvents(0);
+        setEventLoadError(getApiErrorMessage(err, 'Failed to load event stats.'));
+      });
+  }, []);
+
+  const stats = useMemo(() => {
+    const completedTasks = tasks.filter((task) => task.status === 'done').length;
+    const totalTaskEvents = tasks.length;
+    const noteCount = notes.length;
+    const interactions = totalTaskEvents + noteCount + upcomingEvents;
+    return [
+      { label: 'Tasks Completed', value: String(completedTasks) },
+      { label: 'Upcoming Events', value: String(upcomingEvents) },
+      { label: 'Notes Written', value: String(noteCount) },
+      { label: 'Agent Interactions', value: String(interactions) },
+    ];
+  }, [tasks, notes, upcomingEvents]);
+
+  const combinedError = tasksError || notesError || eventLoadError;
 
   const achievements = [
-    { icon: '🚀', title: 'Early Adopter', desc: 'Joined in the first wave', unlocked: true },
-    { icon: '📝', title: 'Knowledge Keeper', desc: 'Created 100+ notes', unlocked: true },
-    { icon: '⚡', title: 'Power User', desc: '1000+ agent actions', unlocked: true },
-    { icon: '🎯', title: 'Task Master', desc: 'Completed 100 tasks', unlocked: true },
-    { icon: '📅', title: 'Scheduler', desc: 'Created 50+ events', unlocked: false },
-    { icon: '🏆', title: 'Champion', desc: 'Used Petal for 30 days straight', unlocked: false },
+    { icon: 'rocket', title: 'Early Adopter', desc: 'Joined in the first wave', unlocked: true },
+    { icon: 'note', title: 'Knowledge Keeper', desc: 'Created 100+ notes', unlocked: true },
+    { icon: 'spark', title: 'Power User', desc: '1000+ agent actions', unlocked: true },
+    { icon: 'target', title: 'Task Master', desc: 'Completed 100 tasks', unlocked: true },
+    { icon: 'calendar', title: 'Scheduler', desc: 'Created 50+ events', unlocked: false },
+    { icon: 'trophy', title: 'Champion', desc: 'Used Petal for 30 days straight', unlocked: false },
   ];
 
   return (
@@ -35,6 +79,16 @@ export function ProfilePage() {
       </div>
 
       <div className="messages" style={{ padding: '24px' }}>
+        {combinedError && (
+          <div style={{ marginBottom: '14px', padding: '10px 12px', border: '2px solid var(--ink)', background: 'rgba(239,68,68,0.12)', color: '#991b1b', fontFamily: 'var(--mono)', fontSize: '11px' }}>
+            {combinedError}
+          </div>
+        )}
+        {saveMessage && (
+          <div style={{ marginBottom: '14px', padding: '10px 12px', border: '2px solid var(--ink)', background: 'rgba(16,185,129,0.14)', color: '#065f46', fontFamily: 'var(--mono)', fontSize: '11px' }}>
+            {saveMessage}
+          </div>
+        )}
         <div style={{ maxWidth: '700px', margin: '0 auto' }}>
           {/* Profile Header */}
           <div style={{
@@ -95,7 +149,12 @@ export function ProfilePage() {
               )}
               <p style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--c5)' }}>{user?.email}</p>
               {bio ? (
-                <p style={{ fontSize: '13px', color: 'var(--c5)', marginTop: '8px' }}>{bio}</p>
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  rows={3}
+                  style={{ width: '100%', marginTop: '8px', fontSize: '13px', color: 'var(--c5)', border: '2px solid var(--ink)', background: 'rgba(255,255,255,0.6)', padding: '8px', resize: 'vertical' }}
+                />
               ) : (
                 <p
                   onClick={() => setBio('Add a bio...')}
@@ -106,7 +165,10 @@ export function ProfilePage() {
               )}
             </div>
             <button
-              onClick={() => setEditing(!editing)}
+              onClick={() => {
+                setEditing(!editing);
+                setSaveMessage(editing ? 'Profile saved.' : 'Editing profile.');
+              }}
               style={{
                 padding: '8px 16px',
                 background: 'var(--c5)',
@@ -125,11 +187,16 @@ export function ProfilePage() {
           {/* Stats */}
           <div style={{ marginBottom: '24px' }}>
             <h3 style={{ fontFamily: 'var(--mono)', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--c5)', marginBottom: '12px' }}>Your Stats</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0', border: '4px solid var(--ink)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0', border: '4px solid var(--ink)' }}>
+              {(tasksLoading || notesLoading) && (
+                <div style={{ gridColumn: '1 / -1', padding: '10px 12px', fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--c5)' }}>
+                  Loading stats...
+                </div>
+              )}
               {stats.map((stat, i) => (
                 <div key={i} style={{
                   padding: '20px',
-                  borderRight: i < 3 ? '2px solid var(--ink)' : 'none',
+                  borderRight: i < stats.length - 1 ? '2px solid var(--ink)' : 'none',
                   textAlign: 'center',
                 }}>
                   <div style={{ fontFamily: 'var(--display)', fontSize: '36px', lineHeight: '1', color: 'var(--c5)' }}>{stat.value}</div>
@@ -142,7 +209,7 @@ export function ProfilePage() {
           {/* Achievements */}
           <div>
             <h3 style={{ fontFamily: 'var(--mono)', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--c5)', marginBottom: '12px' }}>Achievements</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
               {achievements.map((ach, i) => (
                 <div key={i} style={{
                   border: '3px solid var(--ink)',
@@ -152,7 +219,9 @@ export function ProfilePage() {
                   opacity: ach.unlocked ? 1 : 0.5,
                   transition: 'all 0.2s',
                 }}>
-                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>{ach.icon}</div>
+                  <div style={{ display: 'grid', placeItems: 'center', width: '28px', height: '28px', margin: '0 auto 8px', color: ach.unlocked ? 'var(--ink)' : 'var(--c5)' }}>
+                    <AppIcon name={ach.icon as any} size={24} />
+                  </div>
                   <div style={{ fontFamily: 'var(--mono)', fontSize: '11px', fontWeight: 700, marginBottom: '4px' }}>{ach.title}</div>
                   <div style={{ fontSize: '10px', color: 'var(--c5)' }}>{ach.desc}</div>
                   {ach.unlocked && (

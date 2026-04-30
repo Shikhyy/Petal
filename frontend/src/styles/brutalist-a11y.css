@@ -1,0 +1,75 @@
+.logo-sub,
+.ch-desc,
+.pbh-sub,
+.stat-lbl,
+.ev-time,
+.ev-info .ev-loc,
+.auth-card > p,
+.auth-divider,
+.user-email,
+.agent-metric-label {
+  color: var(--ink-soft);
+}
+
+:where(
+  a,
+  button,
+  input,
+  textarea,
+  select,
+  .nav-item,
+  .qchip,
+  .flow-chip,
+  .ne-btn,
+  .nl-new,
+  .send-btn,
+  .cal-nav-btn,
+  .agent-control-btn,
+  .auth-switch button,
+  .auth-submit,
+  .auth-secondary,
+  .auth-dev,
+  .logout-btn,
+  .topbar-logo,
+  .nav-label-btn
+):focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--c3);
+}
+
+.bubble.ai,
+.bubble.user,
+.task-card,
+.agent-card,
+.agent-stat-card,
+.stat-box,
+.qchip,
+.flow-chip,
+.ne-btn,
+.send-btn,
+.cal-nav-btn,
+.agent-control-btn {
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  .bubble.ai:hover,
+  .task-card:hover,
+  .agent-stat-card:hover,
+  .agent-control-btn:hover,
+  .flow-chip:hover,
+  .qchip:hover,
+  .ne-btn:hover,
+  .send-btn:hover,
+  .cal-nav-btn:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}

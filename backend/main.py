@@ -7,7 +7,8 @@ from .api.middleware import setup_cors
 from .api.rate_limit import limiter, rate_limit_exceeded_handler
 from .api.monitoring import LoggingMiddleware
 from .api.websocket import router as ws_router
-from .api.routes import chat, tasks, calendar, notes, agents
+from .api.routes import chat, tasks, calendar, notes, agents, mcp
+from .tools.mcp_client import close_mcp_clients
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,8 @@ logging.basicConfig(
 async def lifespan(app: FastAPI):
     logger.info("PETAL API starting...")
     yield
+    await close_mcp_clients()
+    logger.info("PETAL API shutdown complete")
 
 
 app = FastAPI(
@@ -47,6 +50,7 @@ app.include_router(tasks.router, prefix="/api/v1")
 app.include_router(calendar.router, prefix="/api/v1")
 app.include_router(notes.router, prefix="/api/v1")
 app.include_router(agents.router, prefix="/api/v1")
+app.include_router(mcp.router, prefix="/api/v1")
 
 
 @app.get("/health")

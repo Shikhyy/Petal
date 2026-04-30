@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Nav from '../components/LandingNav';
+import { AppIcon } from '../components/AppIcon';
 
 const LandingPage = () => {
   const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set(['hero']));
@@ -126,25 +127,25 @@ const LandingPage = () => {
           
           <div className="features-grid">
             <div className={`feature-card ${isVisible('features') ? 'animate-in delay-1' : ''}`}>
-              <div className="feature-icon">💬</div>
+              <div className="feature-icon"><AppIcon name="chat" size={26} /></div>
               <h3>CHAT</h3>
               <p>Natural conversation with AI agents specialized in tasks, calendar, and knowledge.</p>
             </div>
             
             <div className={`feature-card ${isVisible('features') ? 'animate-in delay-2' : ''}`}>
-              <div className="feature-icon">✓</div>
+              <div className="feature-icon"><AppIcon name="task" size={26} /></div>
               <h3>TASKS</h3>
               <p>Kanban-style task management. Create, organize, and track your work effortlessly.</p>
             </div>
             
             <div className={`feature-card ${isVisible('features') ? 'animate-in delay-3' : ''}`}>
-              <div className="feature-icon">📅</div>
+              <div className="feature-icon"><AppIcon name="calendar" size={26} /></div>
               <h3>CALENDAR</h3>
               <p>Schedule events and manage your time with intelligent calendar integration.</p>
             </div>
             
             <div className={`feature-card ${isVisible('features') ? 'animate-in delay-4' : ''}`}>
-              <div className="feature-icon">📝</div>
+              <div className="feature-icon"><AppIcon name="note" size={26} /></div>
               <h3>NOTES</h3>
               <p>Build your personal knowledge base. Capture and organize information instantly.</p>
             </div>

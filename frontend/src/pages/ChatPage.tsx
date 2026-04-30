@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { sendMessage } from '../utils/api';
+import { getApiErrorMessage, sendMessage } from '../utils/api';
 import { useStore } from '../store';
 
 const quickActions = [
@@ -22,17 +22,36 @@ const agentFlow = [
 export function ChatPage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const [lastUserMessage, setLastUserMessage] = useState('');
   const messages = useStore((s) => s.messages);
   const addMessage = useStore((s) => s.addMessage);
   const sessionId = useStore((s) => s.sessionId);
   const setSessionId = useStore((s) => s.setSessionId);
+  const clearMessages = useStore((s) => s.clearMessages);
+  const markAgentsActive = useStore((s) => s.markAgentsActive);
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
+  const toFriendlyChatError = (err: unknown) => {
+    const raw = getApiErrorMessage(err, 'Failed to get response from the orchestrator.');
+    if (raw.includes('RESOURCE_EXHAUSTED') || raw.includes('Quota exceeded')) {
+      return 'AI capacity is temporarily exhausted. Your request was received, but model quota is currently limited. Please retry in a moment.';
+    }
+    if (raw.startsWith('429')) {
+      return 'Too many requests right now. Please wait a few seconds and try again.';
+    }
+    return raw;
+  };
 
-    const userMsg = input.trim();
+  const handleSend = async (value?: string) => {
+    if (loading) return;
+
+    const userMsg = (value ?? input).trim();
+    if (!userMsg) return;
+
     setInput('');
     setLoading(true);
+    setSendError('');
+    setLastUserMessage(userMsg);
 
     addMessage({
       role: 'user',
@@ -43,22 +62,33 @@ export function ChatPage() {
     try {
       const response = await sendMessage(userMsg, sessionId || undefined);
       if (!sessionId) setSessionId(response.session_id);
+      markAgentsActive(response.agents_invoked || []);
 
       addMessage({
         role: 'assistant',
         content: response.reply,
         agents_invoked: response.agents_invoked,
+        tool_calls: response.tool_calls,
+        latency_ms: response.latency_ms,
         timestamp: new Date(),
       });
     } catch (err) {
+      const friendly = toFriendlyChatError(err);
+      setSendError(friendly);
       addMessage({
         role: 'assistant',
-        content: 'Error: Failed to get response from the orchestrator.',
+        content: `Error: ${friendly}`,
         timestamp: new Date(),
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleResetConversation = () => {
+    clearMessages();
+    setSessionId(crypto.randomUUID());
+    setSendError('');
   };
 
   return (
@@ -67,6 +97,12 @@ export function ChatPage() {
         <div className="ch-top">
           <h1 className="ch-title">Agent Console</h1>
           <span className="ch-desc">Multi-agent collaboration hub</span>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+            <button type="button" className="qchip" onClick={handleResetConversation}>New Session</button>
+            {sendError && (
+              <button type="button" className="qchip" onClick={() => void handleSend(lastUserMessage)}>Retry Last</button>
+            )}
+          </div>
         </div>
         <div className="agent-flow">
           {agentFlow.map((item, i) => (
@@ -79,6 +115,11 @@ export function ChatPage() {
         </div>
       </div>
       <div className="messages">
+        {sendError && (
+          <div style={{ margin: '10px 0', padding: '10px 12px', border: '2px solid var(--ink)', background: 'rgba(239,68,68,0.12)', color: '#991b1b', fontFamily: 'var(--mono)', fontSize: '11px' }}>
+            {sendError}
+          </div>
+        )}
         {messages.length === 0 ? (
           <div className="msg">
             <div className="ava ai">AI</div>
@@ -101,6 +142,12 @@ export function ChatPage() {
                 {msg.agents_invoked && msg.agents_invoked.length > 0 && (
                   <div className="tool-chip res">
                     Agents: {msg.agents_invoked.join(', ')}
+                  </div>
+                )}
+                {msg.role === 'assistant' && (msg.latency_ms || (msg.tool_calls && msg.tool_calls.length > 0)) && (
+                  <div style={{ marginTop: '8px', fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--c5)' }}>
+                    {typeof msg.latency_ms === 'number' ? `Latency: ${msg.latency_ms}ms` : ''}
+                    {msg.tool_calls && msg.tool_calls.length > 0 ? ` • Tools: ${msg.tool_calls.map((t) => t.tool).join(', ')}` : ''}
                   </div>
                 )}
               </div>
@@ -126,7 +173,7 @@ export function ChatPage() {
             <button 
               key={i} 
               className="qchip"
-              onClick={() => setInput(action)}
+              onClick={() => void handleSend(action)}
             >
               {action}
             </button>
@@ -148,7 +195,7 @@ export function ChatPage() {
           />
           <button 
             className="send-btn" 
-            onClick={handleSend}
+            onClick={() => void handleSend()}
             disabled={loading || !input.trim()}
           >
             {loading ? '...' : 'SEND →'}

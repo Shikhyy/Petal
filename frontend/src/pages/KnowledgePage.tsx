@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useNotes } from '../hooks/useNotes';
 import { Note } from '../utils/api';
+import { Skeleton, SkeletonText } from '../components/Skeleton';
 
 export function KnowledgePage() {
-  const { notes, loading, addNote, updateNote } = useNotes();
+  const { notes, loading, error, addNote, updateNote } = useNotes();
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editBody, setEditBody] = useState('');
+  const [actionMessage, setActionMessage] = useState<string>('');
 
   const handleNew = () => {
     setSelectedNote(null);
@@ -22,25 +24,70 @@ export function KnowledgePage() {
 
   const handleSave = async () => {
     if (!editTitle.trim()) return;
-    if (selectedNote) {
-      await updateNote(selectedNote.id, { title: editTitle.trim(), body: editBody });
-    } else {
-      await addNote({ title: editTitle.trim(), body: editBody, tags: [] });
+    setActionMessage('');
+    try {
+      if (selectedNote) {
+        await updateNote(selectedNote.id, { title: editTitle.trim(), body: editBody });
+      } else {
+        await addNote({ title: editTitle.trim(), body: editBody, tags: [] });
+      }
+      setActionMessage('Saved.');
+      handleNew();
+    } catch (err: any) {
+      setActionMessage(err?.message || 'Could not save note.');
     }
-    handleNew();
   };
 
   const handleDelete = async () => {
+    setActionMessage('');
     if (selectedNote) {
-      await updateNote(selectedNote.id, { deleted: true });
-      handleNew();
+      try {
+        await updateNote(selectedNote.id, { deleted: true });
+        setActionMessage('Deleted.');
+        handleNew();
+      } catch (err: any) {
+        setActionMessage(err?.message || 'Could not delete note.');
+      }
     }
   };
 
-  if (loading) return <div className="notes-container"><div className="empty-state">Loading...</div></div>;
+  if (loading) {
+    return (
+      <div className="notes-container">
+        <div className="notes-list-col">
+          <div className="nl-header">
+            <Skeleton height={14} width="30%" radius={999} />
+            <Skeleton height={28} width={72} radius={4} />
+          </div>
+          <div className="nl-list" style={{ display: 'grid', gap: 12 }}>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} className="nl-item" style={{ pointerEvents: 'none' }}>
+                <Skeleton height={16} width={`${70 - index * 8}%`} radius={999} style={{ marginBottom: 10 }} />
+                <SkeletonText lines={2} widths={["92%", "72%"]} />
+                <Skeleton height={10} width="42%" radius={999} style={{ marginTop: 10 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="note-editor-col">
+          <div className="ne-toolbar">
+            <Skeleton height={32} width={76} radius={4} />
+            <Skeleton height={32} width={84} radius={4} />
+          </div>
+          <Skeleton height={44} width="100%" radius={4} style={{ marginBottom: 12 }} />
+          <Skeleton height={260} width="100%" radius={4} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="notes-container">
+      {(error || actionMessage) && (
+        <div style={{ margin: '10px 0', padding: '10px 12px', border: '2px solid var(--ink)', background: error ? 'rgba(239,68,68,0.12)' : 'rgba(74,222,128,0.15)', color: error ? '#991b1b' : '#14532d', fontFamily: 'var(--mono)', fontSize: '11px' }}>
+          {error || actionMessage}
+        </div>
+      )}
       <div className="notes-list-col">
         <div className="nl-header">
           <span className="nl-title">Notes ({notes.length})</span>
@@ -72,7 +119,7 @@ export function KnowledgePage() {
       <div className="note-editor-col">
         <div className="ne-toolbar">
           <button className="ne-btn" onClick={handleSave}>SAVE</button>
-          <button className="ne-btn" onClick={handleDelete}>DELETE</button>
+          <button className="ne-btn" onClick={handleDelete} disabled={!selectedNote}>DELETE</button>
         </div>
         <input
           type="text"

@@ -1,30 +1,91 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useTasks } from '../hooks/useTasks';
+import { useNotes } from '../hooks/useNotes';
+import { useAgents } from '../hooks/useAgents';
+import { AppIcon } from '../components/AppIcon';
+import { Skeleton, SkeletonText } from '../components/Skeleton';
 
 interface ActivityItem {
   id: string;
   agent: string;
   action: string;
   time: string;
+  timestamp: number;
   type: 'task' | 'calendar' | 'note' | 'system';
   details?: string;
 }
 
 export function ActivityPage() {
   const [filter, setFilter] = useState<string>('all');
-  const [activities] = useState<ActivityItem[]>([
-    { id: '1', agent: 'TaskAgent', action: 'Created task "Review PR #42"', time: '2m ago', type: 'task', details: 'Priority: High • Due: Tomorrow' },
-    { id: '2', agent: 'CalAgent', action: 'Scheduled "Team Standup"', time: '15m ago', type: 'calendar', details: '10:00 AM • Zoom • Recurring' },
-    { id: '3', agent: 'InfoAgent', action: 'Saved note "Q2 Planning Ideas"', time: '1h ago', type: 'note', details: '12 items • 3 tags' },
-    { id: '4', agent: 'Orchestrator', action: 'Routed request to TaskAgent', time: '1h ago', type: 'system', details: 'Confidence: 98%' },
-    { id: '5', agent: 'TaskAgent', action: 'Completed "Setup CI/CD pipeline"', time: '2h ago', type: 'task', details: 'Duration: 45m' },
-    { id: '6', agent: 'CalAgent', action: 'Updated calendar sync', time: '3h ago', type: 'calendar', details: '3 events synced' },
-    { id: '7', agent: 'InfoAgent', action: 'Indexed 15 new notes', time: '4h ago', type: 'note', details: 'Knowledge graph updated' },
-    { id: '8', agent: 'TaskAgent', action: 'Created task "Update documentation"', time: '5h ago', type: 'task', details: 'Priority: Medium • Due: Friday' },
-    { id: '9', agent: 'Orchestrator', action: 'Multi-agent collaboration', time: '6h ago', type: 'system', details: 'TaskAgent + CalAgent + InfoAgent' },
-    { id: '10', agent: 'CalAgent', action: 'Created "Design Review"', time: '7h ago', type: 'calendar', details: '1:00 PM • Conference Room A' },
-    { id: '11', agent: 'InfoAgent', action: 'Updated knowledge graph', time: '8h ago', type: 'note', details: '47 connections updated' },
-    { id: '12', agent: 'TaskAgent', action: 'Moved "Fix login bug" to Done', time: '9h ago', type: 'task', details: 'Completed in 2h 15m' },
-  ]);
+  const { tasks, loading: tasksLoading, error: tasksError } = useTasks();
+  const { notes, loading: notesLoading, error: notesError } = useNotes();
+  const { agents, loading: agentsLoading, error: agentsError } = useAgents();
+
+  const relativeTime = (dateString: string) => {
+    const ts = new Date(dateString).getTime();
+    if (Number.isNaN(ts)) return 'just now';
+    const diff = Date.now() - ts;
+    const minute = 60 * 1000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+    if (diff < minute) return 'just now';
+    if (diff < hour) return `${Math.max(1, Math.floor(diff / minute))}m ago`;
+    if (diff < day) return `${Math.floor(diff / hour)}h ago`;
+    return `${Math.floor(diff / day)}d ago`;
+  };
+
+  const activities = useMemo<ActivityItem[]>(() => {
+    const taskItems: ActivityItem[] = tasks.map((task) => {
+      const ts = new Date(task.updated_at || task.created_at).getTime();
+      const action = task.status === 'done'
+        ? `Completed task "${task.title}"`
+        : task.status === 'in_progress'
+          ? `Updated task "${task.title}"`
+          : `Created task "${task.title}"`;
+      return {
+        id: `task-${task.id}`,
+        agent: 'TaskAgent',
+        action,
+        time: relativeTime(task.updated_at || task.created_at),
+        timestamp: Number.isNaN(ts) ? Date.now() : ts,
+        type: 'task',
+        details: `Priority: ${task.priority || 'medium'}${task.due_date ? ` • Due: ${new Date(task.due_date).toLocaleDateString()}` : ''}`,
+      };
+    });
+
+    const noteItems: ActivityItem[] = notes.map((note) => {
+      const ts = new Date(note.updated_at || note.created_at).getTime();
+      return {
+        id: `note-${note.id}`,
+        agent: 'InfoAgent',
+        action: `Updated note "${note.title}"`,
+        time: relativeTime(note.updated_at || note.created_at),
+        timestamp: Number.isNaN(ts) ? Date.now() : ts,
+        type: 'note',
+        details: note.tags?.length ? `${note.tags.length} tag(s)` : 'No tags',
+      };
+    });
+
+    const agentItems: ActivityItem[] = agents
+      .filter((agent) => typeof agent.last_active === 'number')
+      .map((agent) => {
+        const rawTs = (agent.last_active || 0) * 1000;
+        const ts = rawTs > 0 ? rawTs : Date.now();
+        return {
+          id: `agent-${agent.name}`,
+          agent: agent.name,
+          action: `${agent.name} is ${agent.status}`,
+          time: agent.last_active ? relativeTime(new Date(rawTs).toISOString()) : 'just now',
+          timestamp: ts,
+          type: 'system',
+          details: `Status: ${agent.status}`,
+        };
+      });
+
+    return [...taskItems, ...noteItems, ...agentItems]
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 40);
+  }, [tasks, notes, agents]);
 
   const typeColors: Record<string, string> = {
     task: 'var(--c3)',
@@ -33,14 +94,16 @@ export function ActivityPage() {
     system: 'var(--c5)',
   };
 
-  const typeIcons: Record<string, string> = {
-    task: '✓',
-    calendar: '📅',
-    note: '📝',
-    system: '⚡',
+  const typeIcons: Record<string, Parameters<typeof AppIcon>[0]['name']> = {
+    task: 'task',
+    calendar: 'calendar',
+    note: 'note',
+    system: 'spark',
   };
 
   const filtered = filter === 'all' ? activities : activities.filter(a => a.type === filter);
+  const loading = tasksLoading || notesLoading || agentsLoading;
+  const combinedError = tasksError || notesError || agentsError;
 
   return (
     <>
@@ -54,6 +117,11 @@ export function ActivityPage() {
       </div>
 
       <div className="messages" style={{ padding: '24px' }}>
+        {combinedError && (
+          <div style={{ marginBottom: '14px', padding: '10px 12px', border: '2px solid var(--ink)', background: 'rgba(239,68,68,0.12)', color: '#991b1b', fontFamily: 'var(--mono)', fontSize: '11px' }}>
+            {combinedError}
+          </div>
+        )}
         {/* Filter */}
         <div style={{ display: 'flex', gap: '0', marginBottom: '24px', border: '3px solid var(--ink)', overflow: 'hidden' }}>
           {[
@@ -97,6 +165,24 @@ export function ActivityPage() {
 
         {/* Activity List */}
         <div style={{ border: '4px solid var(--ink)' }}>
+          {loading && (
+            <div style={{ padding: '16px 20px', display: 'grid', gap: 14 }}>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                  <Skeleton width={40} height={40} radius={4} />
+                  <div style={{ flex: 1 }}>
+                    <Skeleton height={14} width={`${76 - index * 4}%`} radius={999} style={{ marginBottom: 8 }} />
+                    <SkeletonText lines={2} widths={["54%", "32%"]} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {!loading && filtered.length === 0 && (
+            <div style={{ padding: '16px 20px', fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--c5)' }}>
+              No activity yet for this filter.
+            </div>
+          )}
           {filtered.map((activity, i) => (
             <div key={activity.id} style={{
               display: 'flex',
@@ -114,10 +200,10 @@ export function ActivityPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '16px',
                 flexShrink: 0,
+                color: 'var(--ink)',
               }}>
-                {typeIcons[activity.type]}
+                <AppIcon name={typeIcons[activity.type]} size={18} />
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>

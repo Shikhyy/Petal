@@ -1,14 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
 export function SettingsPage() {
   const { user, logout } = useAuth();
-  const language = 'en';
-  const setLanguage = (_v: string) => {};
-  const [notifications, setNotifications] = useState(true);
-  const [emailNotifs, setEmailNotifs] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [autoSave, setAutoSave] = useState(true);
+  const [language, setLanguage] = useState(() => localStorage.getItem('petal_language') || 'en');
+  const [notifications, setNotifications] = useState(() => localStorage.getItem('petal_notifications') !== 'false');
+  const [emailNotifs, setEmailNotifs] = useState(() => localStorage.getItem('petal_email_notifications') === 'true');
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('petal_sound') !== 'false');
+  const [autoSave, setAutoSave] = useState(() => localStorage.getItem('petal_auto_save') !== 'false');
+  const [statusMessage, setStatusMessage] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('petal_language', language);
+  }, [language]);
+
+  useEffect(() => {
+    localStorage.setItem('petal_notifications', String(notifications));
+  }, [notifications]);
+
+  useEffect(() => {
+    localStorage.setItem('petal_email_notifications', String(emailNotifs));
+  }, [emailNotifs]);
+
+  useEffect(() => {
+    localStorage.setItem('petal_sound', String(soundEnabled));
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('petal_auto_save', String(autoSave));
+  }, [autoSave]);
 
   const ToggleSwitch = ({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) => (
     <div style={{
@@ -61,6 +81,11 @@ export function SettingsPage() {
 
       <div className="messages" style={{ padding: '24px' }}>
         <div style={{ maxWidth: '700px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {statusMessage && (
+            <div style={{ border: '2px solid var(--ink)', background: 'rgba(74,222,128,0.14)', color: '#14532d', padding: '10px 12px', fontFamily: 'var(--mono)', fontSize: '11px' }}>
+              {statusMessage}
+            </div>
+          )}
           {/* Account */}
           <div style={{ border: '4px solid var(--ink)' }}>
             <div style={{ background: 'var(--c5)', padding: '14px 20px', borderBottom: '3px solid var(--ink)' }}>
@@ -74,7 +99,10 @@ export function SettingsPage() {
                 </div>
               </div>
               <button
-                onClick={logout}
+                onClick={async () => {
+                  await logout();
+                  setStatusMessage('Signed out successfully.');
+                }}
                 style={{
                   padding: '12px 24px',
                   background: 'var(--c3)',
@@ -145,7 +173,19 @@ export function SettingsPage() {
               <p style={{ fontSize: '13px', color: 'var(--c5)', marginBottom: '12px' }}>
                 Once you delete your account, there is no going back. Please be certain.
               </p>
-              <button style={{
+              <button
+                onClick={async () => {
+                  const confirmed = window.confirm('This will sign you out and clear local preference data. Continue?');
+                  if (!confirmed) return;
+                  localStorage.removeItem('petal_language');
+                  localStorage.removeItem('petal_notifications');
+                  localStorage.removeItem('petal_email_notifications');
+                  localStorage.removeItem('petal_sound');
+                  localStorage.removeItem('petal_auto_save');
+                  setStatusMessage('Account deletion is not enabled yet. Local app data was cleared.');
+                  await logout();
+                }}
+                style={{
                 padding: '10px 20px',
                 background: '#ef4444',
                 color: 'white',
@@ -156,7 +196,8 @@ export function SettingsPage() {
                 textTransform: 'uppercase',
                 letterSpacing: '1px',
                 cursor: 'pointer',
-              }}>
+                }}
+              >
                 Delete Account
               </button>
             </div>

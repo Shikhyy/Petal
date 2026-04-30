@@ -15,10 +15,13 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("GEMINI_API_KEY", "GOOGLE_API_KEY"),
     )
     GEMINI_MODEL: str = "gemini-2.0-flash"
+    GROQ_API_KEY: str = Field(default="", validation_alias=AliasChoices("GROQ_API_KEY"))
+    GROQ_MODEL: str = "llama-3.1-8b-instant"
     GOOGLE_CLOUD_PROJECT: str = "local"
     GOOGLE_APPLICATION_CREDENTIALS: str = ""
     GMAIL_MCP_URL: Optional[str] = None
     GCAL_MCP_URL: Optional[str] = None
+    NOTES_MCP_URL: Optional[str] = None
     ALLOWED_ORIGINS: str = Field(
         default="http://localhost:5173"
     )
