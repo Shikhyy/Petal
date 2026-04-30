@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAgentsStatus, AgentStatus } from '../utils/api';
 import { useStore } from '../store';
+import { WinnerStamp } from './WinnerStamp';
 
 interface MCPStatus {
   configured: number;
@@ -117,6 +118,7 @@ export function Topbar() {
       <div className="topbar-status">
         <span className="status-dot" />
         <span className="status-text">{statusLine || 'loading...'}</span>
+        <WinnerStamp compact className="topbar-winner-stamp" />
       </div>
       <div className="agent-pills">
         {withRecentActivity.map((agent, i) => (

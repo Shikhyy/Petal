@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Nav from '../components/LandingNav';
 import { AppIcon } from '../components/AppIcon';
+import { WinnerStamp } from '../components/WinnerStamp';
 
 const LandingPage = () => {
   const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set(['hero']));
@@ -82,6 +83,9 @@ const LandingPage = () => {
           <div className="hero-cta animate-in delay-2">
             <Link to="/signup" className="btn btn-primary btn-large">Start Free</Link>
             <Link to="/how-it-works" className="btn btn-secondary btn-large">See How It Works</Link>
+          </div>
+          <div className="animate-in delay-3" style={{ marginTop: '28px' }}>
+            <WinnerStamp />
           </div>
           <div style={{ marginTop: '40px', display: 'flex', gap: '24px', fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--c5)' }}>
             <span>✓ No credit card</span>

@@ -49,6 +49,10 @@
     display: none;
   }
 
+  .topbar-winner-stamp {
+    display: none !important;
+  }
+
   .nav-item {
     justify-content: center;
     padding: var(--space-3);
